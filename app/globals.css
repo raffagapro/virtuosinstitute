@@ -1,26 +1,36 @@
 @import "tailwindcss";
 
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-navy: #003F60;
+  --color-yellow: #FDCC00;
+  --color-body: #666666;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-open-sans);
+  --font-display: var(--font-sora);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: #ffffff;
+  color: var(--color-body);
+  font-family: var(--font-open-sans), 'Open Sans', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.7em;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Defensive kill-switch for externally injected Adobe/Illustrator widgets. */
+iframe[src*="adobe"],
+[id*="adobe-illustrator"],
+[class*="adobe-illustrator"],
+[id*="adobe_widget"],
+[class*="adobe_widget"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }

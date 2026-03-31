@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { AppButton, AppCheckItem } from "@/components/ui";
 import { translate, type Locale } from "@/lib/i18n";
 
 const values = [
@@ -54,25 +55,27 @@ export function SobreNosotrosSection({ locale = "es-MX" }: SobreNosotrosSectionP
             </p>
             <div className="grid grid-cols-2 gap-x-10 gap-y-3">
               {values.map((key) => (
-                <div key={key} className="flex items-start gap-2 text-[#003F60]">
-                  <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#37E8E2] text-[12px] leading-none text-white">
-                    ✓
-                  </span>
-                  <span className="font-['Sora',Helvetica,Arial,sans-serif] text-[15px] leading-[1.6]">
+                <AppCheckItem
+                  key={key}
+                  as="div"
+                  className="text-[#003F60]"
+                  textClassName="text-[15px] leading-[1.6] text-[#003F60]"
+                >
                     {t(key)}
-                  </span>
-                </div>
+                </AppCheckItem>
               ))}
             </div>
           </div>
 
-          <a
+          <AppButton
+            as="a"
             href="#contacto"
-            className="self-start inline-flex items-center rounded-[30px] font-['Manrope',Helvetica,Arial,sans-serif] text-[16px] font-semibold text-[#002B50] bg-[#37E8E2] hover:bg-[#FDCC00] pl-[38px] pr-[50px] py-[11px] leading-[1.7] transition-colors duration-300"
+            tone="ghost"
+            className="self-start bg-[#37E8E2] text-[#002B50] hover:bg-[#FDCC00] hover:text-[#002B50] font-semibold text-[16px] pl-[38px] pr-[50px] py-[11px]"
           >
             <span>{t("nosotros.cta")}</span>
             <span aria-hidden="true" className="ml-[0.3em]">➜</span>
-          </a>
+          </AppButton>
         </div>
       </div>
     </section>

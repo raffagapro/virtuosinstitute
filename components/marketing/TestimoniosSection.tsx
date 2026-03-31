@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AppSectionLabel } from "@/components/ui";
+import { AppSectionHeading } from "@/components/ui";
 import { translate, type Locale } from "@/lib/i18n";
 
 interface TestimoniosSectionProps {
@@ -53,12 +53,11 @@ export function TestimoniosSection({ locale = "es-MX" }: TestimoniosSectionProps
       }}
     >
       <div className="max-w-7xl mx-auto px-6 flex flex-col gap-12">
-        <div className="flex flex-col items-center text-center gap-3">
-          <AppSectionLabel>{t("testimonios.sectionLabel")}</AppSectionLabel>
-          <h2 className="font-['Sora',Helvetica,Arial,sans-serif] font-bold text-white text-3xl md:text-4xl">
-            {t("testimonios.heading")}
-          </h2>
-        </div>
+        <AppSectionHeading
+          label={t("testimonios.sectionLabel")}
+          title={t("testimonios.heading")}
+          titleClassName="text-white"
+        />
 
         {/* Testimonial carousel */}
         <div className="mx-auto w-full max-w-4xl">

@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { AppSectionLabel } from "@/components/ui";
+import { AppCheckItem, AppSectionHeading } from "@/components/ui";
 import { translate, type Locale } from "@/lib/i18n";
 
 const BASE = "https://virtuosinstitute.com.mx/wp-content/uploads/2025/02/";
@@ -76,12 +76,12 @@ export function BeneficiosSection({ locale = "es-MX" }: BeneficiosSectionProps) 
       </div>
 
       <div className="relative max-w-7xl mx-auto px-6 flex flex-col gap-12">
-        <div className="flex flex-col items-center text-center gap-3">
-          <AppSectionLabel className="text-base md:text-lg font-extrabold tracking-normal">{t("beneficios.sectionLabel")}</AppSectionLabel>
-          <h2 className="font-['Sora',Helvetica,Arial,sans-serif] font-bold text-white text-3xl md:text-4xl">
-            {t("beneficios.heading")}
-          </h2>
-        </div>
+        <AppSectionHeading
+          label={t("beneficios.sectionLabel")}
+          title={t("beneficios.heading")}
+          labelClassName="text-base md:text-lg font-extrabold tracking-normal"
+          titleClassName="text-white"
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {beneficios.map(({ titleKey, descKey, img, icon }) => (
@@ -120,10 +120,14 @@ export function BeneficiosSection({ locale = "es-MX" }: BeneficiosSectionProps) 
                 </div>
 
                 <div className="min-h-[72px] px-[19px] pt-[9px] pb-[20px]">
-                  <p className="flex items-start gap-2 font-['Sora',Helvetica,Arial,sans-serif] text-[16px] leading-[1.2] text-[#b8b9d5]">
-                    <span aria-hidden="true" className="mt-[2px] text-[14px] text-[#ffc606]">✓</span>
-                    <span>{t(descKey)}</span>
-                  </p>
+                  <AppCheckItem
+                    as="div"
+                    className="text-[#b8b9d5]"
+                    iconClassName="mt-[2px] h-auto w-auto rounded-none bg-transparent text-[14px] text-[#ffc606]"
+                    textClassName="text-[16px] leading-[1.2] text-[#b8b9d5]"
+                  >
+                    {t(descKey)}
+                  </AppCheckItem>
                 </div>
               </div>
             </div>

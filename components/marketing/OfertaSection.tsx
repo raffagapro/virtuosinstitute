@@ -1,3 +1,4 @@
+import { AppCheckItem, AppSectionHeading } from "@/components/ui";
 import { translate, type Locale } from "@/lib/i18n";
 
 interface OfertaSectionProps {
@@ -39,14 +40,12 @@ export function OfertaSection({ locale = "es-MX" }: OfertaSectionProps) {
   return (
     <section className="bg-white py-20" id="oferta-educativa">
       <div className="max-w-7xl mx-auto px-6 flex flex-col gap-12">
-        <div className="flex flex-col items-center text-center gap-3">
-          <p className="font-['Sora',Helvetica,Arial,sans-serif] text-[16px] uppercase text-[#37E8E2] text-center">
-            {t("oferta.sectionLabel")}
-          </p>
-          <h2 className="font-['Sora',Helvetica,Arial,sans-serif] font-bold text-[43px] text-[#00197e] leading-[1.25em] text-center">
-            {t("oferta.heading")}
-          </h2>
-        </div>
+        <AppSectionHeading
+          label={t("oferta.sectionLabel")}
+          title={t("oferta.heading")}
+          labelClassName="text-[16px] text-[#37E8E2]"
+          titleClassName="text-[43px] text-[#00197e] leading-[1.25em]"
+        />
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
           {programs.map(({ id, titleKey, descKey, activityKeys, imageUrl, tone, showActivitiesLabel }) => {
@@ -89,18 +88,17 @@ export function OfertaSection({ locale = "es-MX" }: OfertaSectionProps) {
                       ...(showActivitiesLabel ? (["oferta.kinder.actividadesLabel"] as const) : []),
                       ...activityKeys,
                     ].map((key) => (
-                      <li
+                      <AppCheckItem
                         key={key}
-                        className={[
-                          "flex items-start gap-2 font-['Sora',Helvetica,Arial,sans-serif] text-[16px] font-medium leading-[1.6em]",
+                        as="li"
+                        className={isDark ? "text-white/80" : "text-[#666]"}
+                        textClassName={[
+                          "text-[16px] font-medium leading-[1.6em]",
                           isDark ? "text-white/80" : "text-[#666]",
                         ].join(" ")}
                       >
-                        <span className="-mt-[1px] inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#37E8E2] text-[12px] leading-none text-white">
-                          ✓
-                        </span>
                         {t(key)}
-                      </li>
+                      </AppCheckItem>
                     ))}
                   </ul>
                 </div>

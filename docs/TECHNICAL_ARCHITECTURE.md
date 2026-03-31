@@ -40,6 +40,8 @@ Core runtime principles:
 - When feature logic is complex or context-specific, use feature-level wrapper components that compose shared primitives.
 - Do not duplicate card/list/table/form markup across pages when a primitive or wrapper can be reused.
 - Footer/contact primitives are shared through `AppContactInfoGroup` and `AppSocialLinks`.
+- Section heading structure is centralized through `AppSectionHeading` (`label`, `title`, `subtitle` variants).
+- Repeated checklist rows are centralized through `AppCheckItem` for list and inline card contexts.
 - Component styles can be centralized per component via `*.styles.ts` files to enable safer theming updates without changing JSX structure.
 - Shared primitive additions require Storybook stories (`*.stories.tsx`) for regression coverage.
 - Component naming follows the `App` prefix convention: `AppButton`, `AppCard`, etc.

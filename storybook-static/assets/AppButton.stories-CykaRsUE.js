@@ -1,0 +1,11 @@
+import{c as m,j as n}from"./cn-BhIB4xaM.js";import"./iframe-DtxXK4D7.js";import"./preload-helper-PPVm8Dsz.js";const d={primary:"bg-[#FDCC00] text-[#003F60] hover:bg-[#FDCC00] hover:tracking-[0.3px] focus-visible:ring-yellow-400",outline:"bg-transparent border-2 border-[#003F60] text-[#003F60] hover:bg-[#003F60] hover:text-white focus-visible:ring-[#003F60]",ghost:"bg-transparent text-[#003F60] hover:bg-[#003F60]/10 focus-visible:ring-[#003F60]"};function a({tone:i="primary",className:l,children:s,as:u="button",href:p,...c}){const o=m("inline-flex items-center justify-center rounded-[30px] font-['Sora',Helvetica,Arial,sans-serif] font-bold text-[18px] pl-[36px] pr-[48px] py-[14px] leading-[1.7] transition-all duration-300 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 cursor-pointer",d[i],l);return u==="a"?n.jsx("a",{href:p,className:o,children:s}):n.jsx("button",{className:o,...c,children:s})}a.__docgenInfo={description:"",methods:[],displayName:"AppButton",props:{tone:{required:!1,tsType:{name:"union",raw:"keyof typeof toneClasses",elements:[{name:"literal",value:"primary"},{name:"literal",value:"outline"},{name:"literal",value:"ghost"}]},description:"",defaultValue:{value:'"primary"',computed:!1}},as:{required:!1,tsType:{name:"union",raw:'"button" | "a"',elements:[{name:"literal",value:'"button"'},{name:"literal",value:'"a"'}]},description:"",defaultValue:{value:'"button"',computed:!1}},href:{required:!1,tsType:{name:"string"},description:""}},composes:["ButtonHTMLAttributes"]};const h={title:"UI/AppButton",component:a,args:{children:"Button",tone:"primary"}},e={},t={args:{tone:"outline",children:"Outline"}},r={args:{tone:"ghost",children:"Ghost"}};e.parameters={...e.parameters,docs:{...e.parameters?.docs,source:{originalSource:"{}",...e.parameters?.docs?.source}}};t.parameters={...t.parameters,docs:{...t.parameters?.docs,source:{originalSource:`{
+  args: {
+    tone: "outline",
+    children: "Outline"
+  }
+}`,...t.parameters?.docs?.source}}};r.parameters={...r.parameters,docs:{...r.parameters?.docs,source:{originalSource:`{
+  args: {
+    tone: "ghost",
+    children: "Ghost"
+  }
+}`,...r.parameters?.docs?.source}}};const v=["Primary","Outline","Ghost"];export{r as Ghost,t as Outline,e as Primary,v as __namedExportsOrder,h as default};

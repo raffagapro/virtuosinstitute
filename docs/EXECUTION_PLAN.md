@@ -14,33 +14,33 @@
 
 ## Phase 1 — Foundation
 
-- [~] Write execution plan
-- [ ] Install dependencies (clsx, lucide-react, jest, storybook)
-- [ ] Port UI primitives from `D:\projects\alchemist`
-- [ ] Set up i18n (LocaleProvider, translate(), EN + ES message files)
-- [ ] Set up jest + test structure
+- [x] Write execution plan
+- [x] Install dependencies (clsx, lucide-react, jest, storybook)
+- [x] Create UI primitives with architecture similar to `D:\projects\alchemist`
+- [~] Set up i18n (LocaleProvider, translate(), EN + ES message files)
+- [x] Set up jest + test structure
 
 ## Phase 2 — Marketing Site (pixel-faithful recreation of virtuosinstitute.com.mx)
 
 ### Layout
-- [ ] Navbar (logo, anchor links)
-- [ ] Footer (logo, social links, contact info)
+- [x] Navbar (logo, anchor links)
+- [x] Footer (logo, social links, contact info)
 
 ### Page Sections (top → bottom)
-- [ ] Hero — headline, subtitle, CTA button, decorative images
-- [ ] Sobre Nosotros — school description, 8 values grid
-- [ ] Beneficios — 8 differentiator cards (image + icon + title + description)
-- [ ] Enfoque — 3 numbered pillars (Académica, Artística, Socioemocional)
-- [ ] CTA Banner — "¡Fomentamos el aprendizaje significativo!"
-- [ ] Oferta Educativa — Kinder & Primaria program cards
-- [ ] Testimonios — family testimonial(s)
-- [ ] Contact / Lead Form — enrollment form + address + social icons
+- [x] Hero — headline, subtitle, CTA button, decorative images
+- [x] Sobre Nosotros — school description, 8 values grid
+- [x] Beneficios — 8 differentiator cards (image + icon + title + description)
+- [x] Enfoque — 3 numbered pillars (Académica, Artística, Socioemocional)
+- [x] CTA Banner — "¡Fomentamos el aprendizaje significativo!"
+- [x] Oferta Educativa — Kinder & Primaria program cards
+- [x] Testimonios — family testimonial(s)
+- [x] Contact / Lead Form — enrollment form + address + social icons
 
 ### Wire-up
 - [x] Compose all sections in `app/page.tsx`
 - [x] Add modular section registry (`components/marketing/sectionModules.ts`) to support easy add/remove/reorder
-- [ ] i18n keys complete (EN + ES, no missing keys)
-- [ ] Static export verified (`next build`)
+- [~] i18n keys complete (EN + ES, no missing keys)
+- [x] Static export verified (`next build`)
 
 ## Phase 3 — Companion App (parent ↔ school communication)
 > Details TBD — scope to be defined after marketing site MVP.
@@ -66,9 +66,8 @@
 ```
 components/
   ui/              ← Pure primitives (built fresh, same architecture as alchemist)
-                     AppButton, AppCard, AppInput, AppLabel, AppSelect,
-                     AppTextarea, AppModal, AppNotice, AppDisclosure,
-                     AppTable, AppPageShell, cn.ts
+                     AppButton, AppSectionLabel, AppSectionHeading,
+                     AppCheckItem, AppContactInfoGroup, AppSocialLinks
   layout/          ← Shared layout wrappers
                      Navbar, Footer
   marketing/       ← Marketing-site composites (not reused in companion app)

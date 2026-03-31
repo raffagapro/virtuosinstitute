@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { AppSectionHeading } from "@/components/ui";
 import { translate, type Locale } from "@/lib/i18n";
 
 const BASE = "https://virtuosinstitute.com.mx/wp-content/uploads/2025/01/";
@@ -43,19 +44,14 @@ export function EnfoqueSection({ locale = "es-MX" }: EnfoqueSectionProps) {
       id="formacion-artistica"
     >
       <div className="mx-auto flex w-[90%] max-w-[1290px] flex-col gap-12 py-0">
-        <div className="flex flex-col items-center text-center gap-3">
-          <p className="font-['Sora',Helvetica,Arial,sans-serif] font-bold uppercase text-[16px] text-[#FA4361] text-center tracking-[0.2em]">
-            {t("enfoque.sectionLabel")}
-          </p>
-          <div style={{ display: "inline-block" }}>
-            <h2 className="font-['Sora',Helvetica,Arial,sans-serif] font-bold text-[#00197e] text-[43px] leading-[1.25em] text-center whitespace-nowrap">
-              {t("enfoque.heading")}
-            </h2>
-            <p className="font-['Sora',Helvetica,Arial,sans-serif] text-[17px] text-[#3a4268] leading-[1.6em] text-center mt-3 max-w-xl mx-auto">
-              {t("enfoque.subtitle")}
-            </p>
-          </div>
-        </div>
+        <AppSectionHeading
+          label={t("enfoque.sectionLabel")}
+          title={t("enfoque.heading")}
+          subtitle={t("enfoque.subtitle")}
+          labelClassName="font-bold text-[16px] text-[#FA4361] tracking-[0.2em]"
+          titleClassName="text-[#00197e] text-[43px] leading-[1.25em] whitespace-nowrap"
+          subtitleClassName="text-[#3a4268] mt-3 max-w-xl mx-auto"
+        />
 
         <div className="grid grid-cols-1 items-start md:grid-cols-3 md:gap-6">
           {pillars.map(({ num, titleKey, descKey, icon, anchor, showTopDivider }) => (

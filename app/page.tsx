@@ -1,18 +1,6 @@
-import { AppNavbar, AppFooter } from "@/components/layout";
-import { getMarketingSections } from "@/components/marketing/sectionModules";
-
-const homeSections = getMarketingSections();
+import { defaultLocale } from "@/lib/i18n";
+import { HomePageShell } from "@/components/marketing/HomePageShell";
 
 export default function Home() {
-  return (
-    <>
-      <AppNavbar />
-      <main>
-        {homeSections.map(({ id, Component }) => (
-          <Component key={id} />
-        ))}
-      </main>
-      <AppFooter />
-    </>
-  );
+  return <HomePageShell initialLocale={defaultLocale} />;
 }

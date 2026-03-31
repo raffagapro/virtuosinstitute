@@ -17,7 +17,7 @@
 - [x] Write execution plan
 - [x] Install dependencies (clsx, lucide-react, jest, storybook)
 - [x] Create UI primitives with architecture similar to `D:\projects\alchemist`
-- [~] Set up i18n (LocaleProvider, translate(), EN + ES message files)
+- [x] Set up i18n (LocaleProvider, translate(), EN + ES message files)
 - [x] Set up jest + test structure
 
 ## Phase 2 — Marketing Site (pixel-faithful recreation of virtuosinstitute.com.mx)
@@ -39,7 +39,7 @@
 ### Wire-up
 - [x] Compose all sections in `app/page.tsx`
 - [x] Add modular section registry (`components/marketing/sectionModules.ts`) to support easy add/remove/reorder
-- [~] i18n keys complete (EN + ES, no missing keys)
+- [x] i18n keys complete (EN + ES, no missing keys)
 - [x] Static export verified (`next build`)
 
 ## Phase 3 — Companion App (parent ↔ school communication)

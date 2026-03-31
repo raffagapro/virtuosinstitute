@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { Phone, Mail, MapPin } from "lucide-react";
 import { AppButton } from "@/components/ui";
-import { translate, type Locale } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
+import { useLocalization } from "@/lib/i18n/LocaleProvider";
 import {
   leadFormSectionBackgroundStyle,
   leadFormSectionStyles as s,
@@ -13,8 +14,8 @@ interface LeadFormSectionProps {
   locale?: Locale;
 }
 
-export function LeadFormSection({ locale = "es-MX" }: LeadFormSectionProps) {
-  const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
+export function LeadFormSection(_props: LeadFormSectionProps) {
+  const { t } = useLocalization();
   const [submitted, setSubmitted] = useState(false);
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -68,7 +69,7 @@ export function LeadFormSection({ locale = "es-MX" }: LeadFormSectionProps) {
                 allowFullScreen
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                title="Virtuos Institute location"
+                title={t("contacto.mapTitle")}
               />
             </div>
           </div>

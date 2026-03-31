@@ -6,6 +6,17 @@ export type Locale = "es-MX" | "en-US";
 
 export const defaultLocale: Locale = "es-MX";
 
+const supportedLocales: Locale[] = ["es-MX", "en-US"];
+
+export function isLocale(value: string): value is Locale {
+  return supportedLocales.includes(value as Locale);
+}
+
+export function resolveLocale(value?: string): Locale {
+  if (!value) return defaultLocale;
+  return isLocale(value) ? value : defaultLocale;
+}
+
 const messages: Record<Locale, Record<MessageKey, string>> = {
   "es-MX": esMX,
   "en-US": enUS,

@@ -25,11 +25,22 @@ When implementing UI changes, always reuse existing components and patterns firs
 - Applies to AI-generated code and manual contributor changes.
 - Prefer consistency with existing page/component patterns over one-off styling.
 
-## Cross-Project Code Reuse (Required)
+## Documentation Maintenance (Required)
 
-- Before implementing new utilities, hooks, types, components, or API clients, check `D:\projects\alchemist` for existing equivalents.
-- Prefer copying and adapting code from `D:\projects\alchemist` over writing from scratch when the logic is substantially similar.
-- Do not duplicate solutions that already exist there — reference, port, or import them instead.
+- Keep `docs/` in sync with the actual state of the project at all times.
+- When implementing a feature, update the relevant doc before or as part of the same work — not after.
+- Docs that must be updated when changed:
+  - `docs/TECHNICAL_ARCHITECTURE.md` — when adding layers, modules, or changing data flow
+  - `docs/DATA_MODEL.md` — when adding/changing database tables or types
+  - `docs/CONTRIBUTING_GUIDE.md` — when setup steps, commands, or workflows change
+  - `docs/EXECUTION_PLAN.md` — mark tasks done as they are completed
+- Do not leave docs describing old behavior after a refactor.
+
+## Cross-Project Architecture Reference (Required)
+
+- Before implementing new utilities, hooks, types, components, or API clients, check `D:\projects\alchemist` to understand established patterns and architecture decisions.
+- Follow the same architecture patterns (component naming, variant records, tone props, i18n structure, test layout) — but implement them fresh in this project rather than copying code.
+- Do not reinvent patterns that are already solved there; reference the approach and apply it here.
 
 ## Unit Testing (Required)
 

@@ -1,33 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Virtuós Institute
 
-## Getting Started
+Marketing website + companion app for parents and school staff.
 
-First, run the development server:
+## Prerequisites
+
+- Node.js 20+
+- npm
+
+## Setup
+
+```bash
+npm install
+```
+
+Copy the environment file and fill in the values:
+
+```bash
+cp .env.example .env.local
+```
+
+## Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Other Commands
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build        # Production build
+npm run start        # Serve production build locally
+npm run lint         # Run ESLint
+npm test             # Run unit tests
+npm run test:watch   # Run tests in watch mode
+npm run storybook    # Component library (port 6006)
+```
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/                  Next.js app router pages
+components/
+  ui/                 Shared UI primitives (AppButton, AppCard, etc.)
+  layout/             Navbar, Footer
+  marketing/          Marketing-site section components
+lib/
+  i18n.ts             Locale resolution + translate()
+  i18n/messages/      en-US.ts + es-MX.ts message maps
+public/               Static assets (images, fonts)
+tests/                Unit tests (mirrors src structure)
+docs/                 Project documentation & execution plan
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Docs
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See [docs/EXECUTION_PLAN.md](docs/EXECUTION_PLAN.md) for the full roadmap and progress tracker.
 
 ## Deploy on Vercel
 

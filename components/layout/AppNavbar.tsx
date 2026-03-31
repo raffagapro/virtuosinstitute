@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/cn";
-import { translate, type Locale } from "@/lib/i18n";
+import { useLocalization } from "@/lib/i18n/LocaleProvider";
 
 const navLinks = [
   { key: "nav.nosotros" as const, anchor: "#sobre-nosotros" },
@@ -15,11 +15,8 @@ const navLinks = [
 const linkBase =
   "font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[14px] uppercase tracking-[1px] text-white hover:text-[#FDCC00] transition-colors whitespace-nowrap leading-[1]";
 
-interface AppNavbarProps {
-  locale?: Locale;
-}
-
-export function AppNavbar({ locale = "es-MX" }: AppNavbarProps) {
+export function AppNavbar() {
+  const { t } = useLocalization();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
@@ -35,10 +32,10 @@ export function AppNavbar({ locale = "es-MX" }: AppNavbarProps) {
     <header className="fixed top-0 left-0 right-0 z-50 transition-colors duration-300" style={{ backgroundColor: navBg, boxShadow: scrolled ? "0 1px 0 rgba(0,0,0,0.1)" : "none" }}>
       <div className="w-full px-8 flex items-center justify-between h-[70px]">
         {/* Logo */}
-        <a href="#inicio" aria-label="Virtuós Institute" className="shrink-0">
+        <a href="#inicio" aria-label={t("nav.logoAria")} className="shrink-0">
           <Image
             src="https://virtuosinstitute.com.mx/wp-content/uploads/2025/01/Recurso-6virtuos-logo-980x380.png"
-            alt="Virtuós Institute"
+            alt={t("nav.logoAria")}
             width={100}
             height={38}
             priority
@@ -53,7 +50,7 @@ export function AppNavbar({ locale = "es-MX" }: AppNavbarProps) {
             href="#inicio"
             className="font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[14px] uppercase tracking-[1px] text-[#fa4361] hover:text-[#e43756] transition-colors leading-[1] pr-[22px]"
           >
-            {translate(locale, "nav.inicio")}
+            {t("nav.inicio")}
           </a>
           {navLinks.map(({ key, anchor }) => (
             <a
@@ -61,7 +58,7 @@ export function AppNavbar({ locale = "es-MX" }: AppNavbarProps) {
               href={anchor}
               className={`${linkBase} pr-[22px]`}
             >
-              {translate(locale, key)}
+              {t(key)}
             </a>
           ))}
           {/* CTA pill */}
@@ -69,14 +66,14 @@ export function AppNavbar({ locale = "es-MX" }: AppNavbarProps) {
             href="#contacto"
             className="inline-flex items-center font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[14px] uppercase tracking-[1px] text-white hover:text-white transition-colors leading-[1] px-[15px] py-[14px] rounded-[25px] bg-[#fa4361] hover:bg-[#FDCC00] ml-2"
           >
-            {translate(locale, "nav.contacto")}
+            {t("nav.contacto")}
           </a>
         </nav>
 
         {/* Hamburger */}
         <button
           className="md:hidden p-2 text-[#003F60]"
-          aria-label="Menú"
+          aria-label={t("nav.menuAria")}
           onClick={() => setOpen((v) => !v)}
         >
           <span className="block w-6 h-0.5 bg-current mb-1" />
@@ -99,7 +96,7 @@ export function AppNavbar({ locale = "es-MX" }: AppNavbarProps) {
             className="font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[14px] uppercase tracking-[1px] text-[#fa4361] hover:text-[#e43756] transition-colors"
             onClick={() => setOpen(false)}
           >
-            {translate(locale, "nav.inicio")}
+            {t("nav.inicio")}
           </a>
           {navLinks.map(({ key, anchor }) => (
             <a
@@ -108,7 +105,7 @@ export function AppNavbar({ locale = "es-MX" }: AppNavbarProps) {
               className="font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[14px] uppercase tracking-[1px] text-white hover:text-[#FDCC00] transition-colors"
               onClick={() => setOpen(false)}
             >
-              {translate(locale, key)}
+              {t(key)}
             </a>
           ))}
           {/* CTA pill */}
@@ -117,7 +114,7 @@ export function AppNavbar({ locale = "es-MX" }: AppNavbarProps) {
             className="font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[14px] uppercase tracking-[1px] text-white hover:text-white transition-colors px-[15px] py-[14px] rounded-[25px] bg-[#fa4361] hover:bg-[#FDCC00] self-start"
             onClick={() => setOpen(false)}
           >
-            {translate(locale, "nav.contacto")}
+            {t("nav.contacto")}
           </a>
         </nav>
       </div>

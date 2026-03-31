@@ -11,8 +11,15 @@ export const appFooterStyles = {
     "font-['Open_Sans',Arial,sans-serif] text-[16px] leading-[1.6] text-white/90",
   emailLink:
     "font-['Open_Sans',Arial,sans-serif] text-[26px] leading-[1.5] text-[#2ea3f2] underline transition-colors hover:text-[#2ea3f2] hover:underline",
+  socialRow: "flex items-center gap-4 pt-1",
   socialWrapper: "flex items-center gap-5 pt-1",
   socialLink: "transition-colors hover:text-[#FDCC00]",
+  localeSwitcher:
+    "inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] p-1 backdrop-blur-sm",
+  localeButton:
+    "rounded-full px-2.5 py-1 font-['Sora',Helvetica,Arial,sans-serif] text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors duration-200",
+  localeButtonActive: "bg-white/12 text-white",
+  localeButtonInactive: "text-white/45 hover:text-white/75",
   logoCol: "flex items-start justify-start md:justify-center",
   logoImg: "h-auto w-[160px] md:w-[195px]",
 } as const;

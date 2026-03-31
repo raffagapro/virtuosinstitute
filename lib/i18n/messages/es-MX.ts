@@ -9,12 +9,17 @@ const esMX = {
   "nav.oferta": "Oferta educativa",
   "nav.testimonios": "Testimonios",
   "nav.contacto": "Contáctanos",
+  "nav.logoAria": "Virtuós Institute",
+  "nav.menuAria": "Menú",
 
   // Hero
   "hero.headline": "Transformamos el aprendizaje en una experiencia única 🌟",
+  "hero.highlightPhrase": "experiencia única 🌟",
   "hero.subtext":
     "¿Quieres desarrollar al máximo el potencial de tus hijos? ¡Conoce nuestra metodología!",
   "hero.cta": "¡Quiero más información!",
+  "hero.logoAlt": "Virtuós Institute",
+  "hero.bannerAlt": "Banner de Virtuós Institute",
   "hero.card.academica.desc":
     "Desarrollamos pensamiento crítico, curiosidad científica y bases sólidas de conocimiento.",
   "hero.card.artistica.desc":
@@ -103,6 +108,9 @@ const esMX = {
   // Testimonios
   "testimonios.sectionLabel": "Testimonios",
   "testimonios.heading": "Lo que padres y alumnos dicen de nosotros",
+  "testimonios.prevAria": "Testimonio anterior",
+  "testimonios.nextAria": "Siguiente testimonio",
+  "testimonios.dotAria": "Ir al testimonio {index}",
   "testimonios.1.quote":
     "Muy agradecidos con la escuela por la manera en que pudo sacar lo mejor de mi hijo, tanto a nivel académico como emocional, estando ahí ganó el concurso de las Olimpiadas de Conocimiento Infantil, él traía todo el potencial pero solo la escuela pudo impulsarlo y sacar lo mejor de él para lograrlo.",
   "testimonios.1.author": "Familia Sánchez Fernández",
@@ -121,6 +129,12 @@ const esMX = {
   "contacto.email": "info@virtuosinstitute.com.mx",
   "contacto.address": "Calle 25 # 145 Buenavista, Mérida, Yucatán.",
   "contacto.venLabel": "Ven a conocernos",
+  "contacto.mapTitle": "Ubicación de Virtuós Institute",
+
+  // Social
+  "social.facebook": "Facebook",
+  "social.instagram": "Instagram",
+  "social.whatsapp": "WhatsApp",
 
   // Lead Form
   "leadForm.heading": "¡Inscríbete hoy y asegura el futuro de tus hijos!",
@@ -139,6 +153,11 @@ const esMX = {
 
   // Footer
   "footer.tagline": "Virtuós Institute",
+  "footer.languageSwitcherAria": "Selector de idioma",
+  "footer.switchToEsAria": "Cambiar idioma a español",
+  "footer.switchToEnAria": "Cambiar idioma a inglés",
+  "footer.locale.esShort": "ES",
+  "footer.locale.enShort": "EN",
 } as const;
 
 export type MessageKey = keyof typeof esMX;

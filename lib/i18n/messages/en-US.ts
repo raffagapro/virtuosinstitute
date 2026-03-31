@@ -11,11 +11,16 @@ const enUS: Record<MessageKey, string> = {
   "nav.oferta": "Educational Offer",
   "nav.testimonios": "Testimonials",
   "nav.contacto": "Contact Us",
+  "nav.logoAria": "Virtuós Institute",
+  "nav.menuAria": "Menu",
   // Hero
   "hero.headline": "We transform learning into a unique experience 🌟",
+  "hero.highlightPhrase": "unique experience 🌟",
   "hero.subtext":
     "Do you want to maximize your children's potential? Learn about our methodology!",
   "hero.cta": "I want more information!",
+  "hero.logoAlt": "Virtuós Institute",
+  "hero.bannerAlt": "Virtuós Institute banner",
   "hero.card.academica.desc":
     "We build critical thinking, scientific curiosity and strong academic foundations.",
   "hero.card.artistica.desc":
@@ -104,6 +109,9 @@ const enUS: Record<MessageKey, string> = {
   // Testimonios
   "testimonios.sectionLabel": "Testimonials",
   "testimonios.heading": "What parents and students say about us",
+  "testimonios.prevAria": "Previous testimonial",
+  "testimonios.nextAria": "Next testimonial",
+  "testimonios.dotAria": "Go to testimonial {index}",
   "testimonios.1.quote":
     "We are very grateful to the school for the way it brought out the best in my son, both academically and emotionally. While there he won the Children's Knowledge Olympics competition — he had all the potential but only the school could push him and bring out the best to achieve it.",
   "testimonios.1.author": "Familia Sánchez Fernández",
@@ -122,6 +130,12 @@ const enUS: Record<MessageKey, string> = {
   "contacto.email": "info@virtuosinstitute.com.mx",
   "contacto.address": "Calle 25 # 145 Buenavista, Mérida, Yucatán.",
   "contacto.venLabel": "Come and visit us",
+  "contacto.mapTitle": "Virtuós Institute location",
+
+  // Social
+  "social.facebook": "Facebook",
+  "social.instagram": "Instagram",
+  "social.whatsapp": "WhatsApp",
 
   // Lead Form
   "leadForm.heading": "Enrol today and secure your children's future!",
@@ -140,6 +154,11 @@ const enUS: Record<MessageKey, string> = {
 
   // Footer
   "footer.tagline": "Virtuós Institute",
+  "footer.languageSwitcherAria": "Language selector",
+  "footer.switchToEsAria": "Switch language to Spanish",
+  "footer.switchToEnAria": "Switch language to English",
+  "footer.locale.esShort": "ES",
+  "footer.locale.enShort": "EN",
 };
 
 export default enUS;

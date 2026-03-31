@@ -1,3 +1,7 @@
+"use client";
+
+import { useLocalization } from "@/lib/i18n/LocaleProvider";
+
 interface AppSocialLinksProps {
   wrapperClassName?: string;
   linkClassName?: string;
@@ -9,13 +13,15 @@ export function AppSocialLinks({
   linkClassName,
   iconSize = 22,
 }: AppSocialLinksProps) {
+  const { t } = useLocalization();
+
   return (
     <div className={wrapperClassName}>
       <a
         href="https://www.facebook.com/VirtuosInstitute/"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Facebook"
+        aria-label={t("social.facebook")}
         className={linkClassName}
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={iconSize} height={iconSize}>
@@ -27,7 +33,7 @@ export function AppSocialLinks({
         href="https://www.instagram.com/virtuos.institute/"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Instagram"
+        aria-label={t("social.instagram")}
         className={linkClassName}
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width={iconSize} height={iconSize}>
@@ -39,7 +45,7 @@ export function AppSocialLinks({
         href="https://wa.me/529992244053"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="WhatsApp"
+        aria-label={t("social.whatsapp")}
         className={linkClassName}
       >
         <svg

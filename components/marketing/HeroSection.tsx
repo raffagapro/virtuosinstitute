@@ -9,7 +9,7 @@ interface HeroSectionProps {
 export function HeroSection({ locale = "es-MX" }: HeroSectionProps) {
   const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
   const headline = t("hero.headline");
-  const highlightPhrase = "experiencia única 🌟";
+  const highlightPhrase = t("hero.highlightPhrase");
   const featureCards = [
     {
       titleKey: "nav.academica" as const,
@@ -52,7 +52,7 @@ export function HeroSection({ locale = "es-MX" }: HeroSectionProps) {
           <div className="pb-9 max-w-[45%]">
             <Image
               src="https://virtuosinstitute.com.mx/wp-content/uploads/2025/01/Recurso-6virtuos-logo-980x380.png"
-              alt="Virtuós Institute"
+              alt={t("hero.logoAlt")}
               width={1016}
               height={394}
               className="w-full h-auto"
@@ -88,7 +88,7 @@ export function HeroSection({ locale = "es-MX" }: HeroSectionProps) {
           <div className="relative z-10 w-full max-w-sm md:max-w-md">
             <Image
               src="https://virtuosinstitute.com.mx/wp-content/uploads/2025/01/Recurso-2virtuos-banner-980x1472.png"
-              alt="Virtuós Institute banner"
+              alt={t("hero.bannerAlt")}
               width={490}
               height={736}
               className="w-full h-auto"

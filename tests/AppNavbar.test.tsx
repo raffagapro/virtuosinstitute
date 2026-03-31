@@ -22,7 +22,7 @@ function expectLinkTarget(name: string, href: string) {
 
 describe("AppNavbar", () => {
   it("renders the expected Spanish nav links with correct anchors", () => {
-    render(<AppNavbar locale="es-MX" />);
+    render(<AppNavbar />);
 
     expectLinkTarget("Inicio", "#inicio");
     expectLinkTarget("Sobre Nosotros", "#sobre-nosotros");
@@ -35,7 +35,7 @@ describe("AppNavbar", () => {
   });
 
   it("keeps the contact action as a red CTA", () => {
-    render(<AppNavbar locale="es-MX" />);
+    render(<AppNavbar />);
 
     const contactLinks = screen.getAllByRole("link", { name: "Contáctanos" });
     expect(contactLinks.some((link) => link.className.includes("bg-[#fa4361]"))).toBe(true);

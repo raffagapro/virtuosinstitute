@@ -4,11 +4,8 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AppSectionHeading } from "@/components/ui";
-import { translate, type Locale } from "@/lib/i18n";
-
-interface TestimoniosSectionProps {
-  locale?: Locale;
-}
+import { type Locale } from "@/lib/i18n";
+import { useLocalization } from "@/lib/i18n/LocaleProvider";
 
 const testimonialSlides = [
   { quoteKey: "testimonios.1.quote", authorKey: "testimonios.1.author" },
@@ -17,8 +14,12 @@ const testimonialSlides = [
   { quoteKey: "testimonios.4.quote", authorKey: "testimonios.4.author" },
 ] as const;
 
-export function TestimoniosSection({ locale = "es-MX" }: TestimoniosSectionProps) {
-  const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
+interface TestimoniosSectionProps {
+  locale?: Locale;
+}
+
+export function TestimoniosSection(_props: TestimoniosSectionProps) {
+  const { t } = useLocalization();
   const [activeSlide, setActiveSlide] = useState(0);
 
   const goToPrevSlide = () => {
@@ -93,7 +94,7 @@ export function TestimoniosSection({ locale = "es-MX" }: TestimoniosSectionProps
           <div className="mt-2 flex items-center justify-center gap-4">
             <button
               type="button"
-              aria-label="Previous testimonial"
+              aria-label={t("testimonios.prevAria")}
               onClick={goToPrevSlide}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white/75 transition hover:text-white"
             >
@@ -105,7 +106,7 @@ export function TestimoniosSection({ locale = "es-MX" }: TestimoniosSectionProps
                 <button
                   key={`dot-${index}`}
                   type="button"
-                  aria-label={`Go to testimonial ${index + 1}`}
+                  aria-label={t("testimonios.dotAria", { index: index + 1 })}
                   onClick={() => setActiveSlide(index)}
                   className={[
                     "h-2.5 w-2.5 rounded-full transition-colors",
@@ -117,7 +118,7 @@ export function TestimoniosSection({ locale = "es-MX" }: TestimoniosSectionProps
 
             <button
               type="button"
-              aria-label="Next testimonial"
+              aria-label={t("testimonios.nextAria")}
               onClick={goToNextSlide}
               className="inline-flex h-8 w-8 items-center justify-center rounded-full text-white/75 transition hover:text-white"
             >

@@ -10,16 +10,572 @@ The marketing site is fully static. The lead/enrollment form will submit to an e
 
 ---
 
-## Phase 3 — Companion App (TBD)
+## Phase 3+ — Companion App (Initial Draft)
 
-Schema and tables will be defined when companion app scope is confirmed. Expected entities:
+This draft defines the first implementation baseline for the parent/staff companion app.
 
-- `profiles` — user identity (parents, staff, admins)
-- `students` — student records linked to parent profiles
-- `messages` or `threads` — parent ↔ staff communication
-- `announcements` — school-wide or class-level notices
+### Auth Provider
 
-This section will be updated when Phase 3 design begins.
+- Authentication is handled through Google OAuth (via Supabase Auth provider configuration).
+- User role/permissions are managed in app tables and RLS policies.
+- Students are not auth users and do not have login credentials.
+
+### File Storage Decision
+
+- File binaries are stored in Supabase Storage buckets, not in Postgres rows.
+- MVP buckets:
+	- `identity-documents`
+	- `student-files`
+	- `notification-media`
+- Database tables store file metadata, ownership, and permission-relevant references.
+- All buckets are private in MVP; access should be mediated by signed URLs after permission checks.
+- Storage paths should be deterministic and school-scoped.
+- Path convention examples:
+	- `identity-documents/school_{schoolId}/parents/{profileId}/{documentType}/{fileId}.{ext}`
+	- `identity-documents/school_{schoolId}/staff/{profileId}/{documentType}/{fileId}.{ext}`
+	- `identity-documents/school_{schoolId}/students/{studentId}/pickup/{pickupContactId}/{fileId}.{ext}`
+	- `student-files/school_{schoolId}/students/{studentId}/documents/{fileId}.{ext}`
+	- `student-files/school_{schoolId}/students/{studentId}/grades/{fileId}.pdf`
+	- `student-files/school_{schoolId}/students/{studentId}/evaluations/{fileId}.pdf`
+	- `notification-media/school_{schoolId}/campaigns/{campaignId}/{fileId}.{ext}`
+
+### Role Model
+
+- Platform role:
+	- `superadmin`
+- School and user roles:
+	- `school_owner`
+	- `direction`
+	- `coordination`
+	- `teacher`
+	- `clerk`
+	- `parent`
+	- `student` (entity role only, no auth login)
+	- `guest` (non-login calendar requester)
+
+### Core Tables
+
+#### `schools`
+Top-level school entity.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | School id |
+| `name` | `text` | School display name |
+| `slug` | `text` unique | Route-safe identifier |
+| `is_active` | `boolean` | Default `true` |
+| `created_at` | `timestamptz` | Default `now()` |
+| `updated_at` | `timestamptz` | Updated by trigger |
+
+#### `profiles`
+User profile mapped to Supabase auth users.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Equals `auth.users.id` |
+| `full_name` | `text` | Display name |
+| `email` | `text` nullable | Mirror of auth email for querying/reporting |
+| `platform_role` | `text` nullable | `superadmin` or `null` |
+| `phone` | `text` nullable | Optional contact field |
+| `preferred_locale` | `text` | `es-MX` or `en-US` |
+| `created_at` | `timestamptz` | Default `now()` |
+| `updated_at` | `timestamptz` | Updated by trigger |
+
+#### `parent_profiles`
+Parent-only fields layered on top of the shared profile table.
+
+| Column | Type | Notes |
+|---|---|---|
+| `profile_id` | `uuid` PK/FK -> `profiles.id` | Parent profile |
+| `curp` | `text` | Required |
+| `rfc` | `text` nullable | Required only if invoicing is requested |
+| `invoice_required` | `boolean` | Default `false` |
+| `profession` | `text` nullable | Parent profession |
+| `government_id_document_id` | `uuid` FK -> `identity_documents.id` nullable | INE/passport |
+| `created_at` | `timestamptz` | Default `now()` |
+| `updated_at` | `timestamptz` | Updated by trigger |
+
+#### `staff_profiles`
+Staff-only identity/compliance fields layered on top of the shared profile table.
+
+| Column | Type | Notes |
+|---|---|---|
+| `profile_id` | `uuid` PK/FK -> `profiles.id` | Staff profile |
+| `government_id_document_id` | `uuid` FK -> `identity_documents.id` nullable | INE/passport |
+| `created_at` | `timestamptz` | Default `now()` |
+| `updated_at` | `timestamptz` | Updated by trigger |
+
+#### `identity_documents`
+Metadata for identity-proof files attached to parents, staff, and authorized pickup contacts.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Document id |
+| `school_id` | `uuid` FK -> `schools.id` nullable | Nullable for platform-level records |
+| `storage_bucket` | `text` | Expected: `identity-documents` |
+| `document_type` | `text` | `ine`, `passport`, `pickup_id`, `signed_authorization` |
+| `storage_path` | `text` | Object storage path |
+| `mime_type` | `text` | Content type |
+| `byte_size` | `bigint` | File size |
+| `uploaded_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Uploader |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `school_memberships`
+Maps user profiles to schools with school-scoped role assignments.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Membership id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `profile_id` | `uuid` FK -> `profiles.id` | Required |
+| `school_role` | `text` | `school_owner`, `direction`, `coordination`, `teacher`, `clerk`, `parent`, `student`, `guest` |
+| `is_active` | `boolean` | Default `true` |
+| `approval_status` | `text` | `pending`, `approved`, `rejected`, `suspended` |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `parent_approval_requests`
+Tracks parent onboarding/approval review state and reviewer actions.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Request id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `profile_id` | `uuid` FK -> `profiles.id` | Parent profile |
+| `status` | `text` | `pending`, `approved`, `rejected`, `suspended` |
+| `reviewed_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Staff reviewer |
+| `reviewed_at` | `timestamptz` nullable | Review timestamp |
+| `notes` | `text` nullable | Internal review notes |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `students`
+Student records managed by parents/staff/admin. Students do not authenticate directly.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Student id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `created_by_parent_profile_id` | `uuid` FK -> `profiles.id` nullable | Parent who submitted student registration |
+| `approval_status` | `text` | `pending`, `approved`, `rejected`, `archived` |
+| `approved_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Staff approver |
+| `approved_at` | `timestamptz` nullable | Approval timestamp |
+| `first_name` | `text` | Required |
+| `last_name` | `text` | Required |
+| `curp` | `text` nullable | Required for enrolled student record completion |
+| `grade_level` | `text` | Example: `kinder`, `primaria-1` |
+| `blood_type` | `text` nullable | Example: `O+` |
+| `allergies` | `text` nullable | Medical notes |
+| `enrollment_date` | `date` nullable | Fecha de inscripcion |
+| `is_active` | `boolean` | Default `true` |
+| `created_at` | `timestamptz` | Default `now()` |
+| `updated_at` | `timestamptz` | Updated by trigger |
+
+#### `student_guardians`
+Join table between parents and students.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Relationship id |
+| `student_id` | `uuid` FK -> `students.id` | Required |
+| `guardian_profile_id` | `uuid` FK -> `profiles.id` | Parent profile |
+| `relationship` | `text` nullable | Example: `mother`, `father`, `tutor` |
+| `is_primary_contact` | `boolean` | Default `false` |
+| `link_status` | `text` | `pending`, `active`, `inactive` |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `student_documents`
+Tracks required/received enrollment documents for each student.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Document record id |
+| `student_id` | `uuid` FK -> `students.id` | Required |
+| `document_type` | `text` | Example: birth certificate, CURP, photo |
+| `status` | `text` | `missing`, `submitted`, `approved`, `rejected` |
+| `storage_path` | `text` nullable | File location if uploaded |
+| `reviewed_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Reviewer |
+| `reviewed_at` | `timestamptz` nullable | Review timestamp |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `student_pickup_contacts`
+People authorized by parents to pick up a student.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Contact id |
+| `student_id` | `uuid` FK -> `students.id` | Required |
+| `full_name` | `text` | Required |
+| `relationship` | `text` nullable | Example: grandmother, uncle, nanny |
+| `phone` | `text` nullable | Optional contact info |
+| `id_document_id` | `uuid` FK -> `identity_documents.id` nullable | Required for activation |
+| `status` | `text` | `pending`, `active`, `revoked` |
+| `created_by_parent_profile_id` | `uuid` FK -> `profiles.id` | Parent actor |
+| `created_at` | `timestamptz` | Default `now()` |
+| `updated_at` | `timestamptz` | Updated by trigger |
+
+#### `student_pickup_authorizations`
+Parent consent artifacts for pickup authorization.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Authorization id |
+| `student_pickup_contact_id` | `uuid` FK -> `student_pickup_contacts.id` | Required |
+| `student_id` | `uuid` FK -> `students.id` | Required |
+| `parent_profile_id` | `uuid` FK -> `profiles.id` | Parent granting authorization |
+| `authorization_document_id` | `uuid` FK -> `identity_documents.id` nullable | Signed authorization file |
+| `consent_text_version` | `text` nullable | Version of digital agreement text |
+| `authorized_at` | `timestamptz` | Consent timestamp |
+| `revoked_at` | `timestamptz` nullable | Revocation timestamp |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `student_pickup_audit_logs`
+Immutable audit trail for pickup-authorization changes.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Audit id |
+| `student_id` | `uuid` FK -> `students.id` | Required |
+| `student_pickup_contact_id` | `uuid` FK -> `student_pickup_contacts.id` | Required |
+| `actor_profile_id` | `uuid` FK -> `profiles.id` nullable | Parent or staff actor |
+| `action` | `text` | `created`, `updated`, `activated`, `revoked`, `deleted_attempted` |
+| `reason` | `text` nullable | Optional justification |
+| `metadata_json` | `jsonb` | Before/after snapshot data |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `academic_classes`
+Class catalog used for student grouping and teacher assignments.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Class id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `name` | `text` | Example: `1A Primaria` |
+| `grade_level` | `text` | Normalized grade label |
+| `is_active` | `boolean` | Default `true` |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `teacher_class_assignments`
+Teacher-to-class assignments.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Assignment id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `teacher_profile_id` | `uuid` FK -> `profiles.id` | Required |
+| `class_id` | `uuid` FK -> `academic_classes.id` | Required |
+| `subject_name` | `text` nullable | Optional subject dimension |
+| `starts_on` | `date` nullable | Optional effective start |
+| `ends_on` | `date` nullable | Optional effective end |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `threads`
+Conversation container for parent ↔ staff communication.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Thread id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `student_id` | `uuid` FK -> `students.id` nullable | Optional student context |
+| `subject` | `text` | Thread subject |
+| `status` | `text` | `open`, `closed` |
+| `created_by_profile_id` | `uuid` FK -> `profiles.id` | Creator |
+| `created_at` | `timestamptz` | Default `now()` |
+| `updated_at` | `timestamptz` | Updated by trigger |
+
+#### `thread_participants`
+Explicit participants for each thread.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Membership id |
+| `thread_id` | `uuid` FK -> `threads.id` | Required |
+| `profile_id` | `uuid` FK -> `profiles.id` | Required |
+| `participant_role` | `text` | Snapshot role at join time |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `messages`
+Message items belonging to a thread.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Message id |
+| `thread_id` | `uuid` FK -> `threads.id` | Required |
+| `sender_profile_id` | `uuid` FK -> `profiles.id` | Required |
+| `body` | `text` | Message content |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `announcements`
+Broadcast communication from staff/admin.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Announcement id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `title` | `text` | Required |
+| `body` | `text` | Required |
+| `audience` | `text` | `school`, `grade`, `student-list` |
+| `audience_ref` | `text` nullable | Optional target identifier |
+| `priority` | `text` | `normal`, `high` |
+| `published_by_profile_id` | `uuid` FK -> `profiles.id` | Publisher |
+| `published_at` | `timestamptz` | Publish datetime |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `notification_campaigns`
+Staff-created notification campaigns that may deliver email and/or in-app content.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Campaign id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `title` | `text` | Internal/admin title |
+| `subject` | `text` nullable | Email subject if applicable |
+| `body` | `text` | Campaign content |
+| `target_audience` | `text` | `parents`, `staff`, `both` |
+| `delivery_mode` | `text` | `immediate`, `scheduled` |
+| `scheduled_for` | `timestamptz` nullable | Future send time |
+| `banner_media_asset_id` | `uuid` FK -> `media_assets.id` nullable | Optional dashboard banner |
+| `created_by_profile_id` | `uuid` FK -> `profiles.id` | Creator |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `notification_deliveries`
+Per-recipient delivery state for notification campaigns.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Delivery id |
+| `campaign_id` | `uuid` FK -> `notification_campaigns.id` | Required |
+| `profile_id` | `uuid` FK -> `profiles.id` | Recipient |
+| `email_status` | `text` | `pending`, `sent`, `failed`, `skipped` |
+| `in_app_status` | `text` | `unread`, `read`, `hidden` |
+| `delivered_at` | `timestamptz` nullable | Delivery timestamp |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `media_assets`
+Metadata for stored images/PDFs used by notifications, evaluations, and similar features.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Asset id |
+| `school_id` | `uuid` FK -> `schools.id` nullable | Nullable for platform-level assets |
+| `storage_bucket` | `text` | Expected: `student-files` or `notification-media` |
+| `kind` | `text` | `banner_image`, `grade_pdf`, `evaluation_pdf`, `document_upload` |
+| `storage_path` | `text` | Object storage path |
+| `mime_type` | `text` | Content type |
+| `byte_size` | `bigint` | File size |
+| `created_by_profile_id` | `uuid` FK -> `profiles.id` | Uploader |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `calendars`
+Logical calendars/resources within the shared scheduling engine.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Calendar id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `calendar_type` | `text` | `school_events`, `clerk_appointments`, `coordination_appointments`, `direction_appointments`, `teacher_schedule` |
+| `title` | `text` | Display name |
+| `is_active` | `boolean` | Default `true` |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `calendar_events`
+General events shown on calendar surfaces.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Event id |
+| `calendar_id` | `uuid` FK -> `calendars.id` | Required |
+| `title` | `text` | Event title |
+| `description` | `text` nullable | Optional details |
+| `event_type` | `text` | `school_event`, `birthday`, `teacher_shift`, `important_date` |
+| `starts_at` | `timestamptz` | Required |
+| `ends_at` | `timestamptz` | Required |
+| `created_by_profile_id` | `uuid` FK -> `profiles.id` | Creator |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `availability_rules`
+Recurring open-hours rules used to generate appointment slots.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Rule id |
+| `calendar_id` | `uuid` FK -> `calendars.id` | Appointment-capable calendar |
+| `weekday` | `int` | 0-6 or 1-7 by implementation choice |
+| `start_time` | `time` | Required |
+| `end_time` | `time` | Required |
+| `slot_minutes` | `int` | Example: 20, 30, 60 |
+| `effective_from` | `date` | Required |
+| `effective_to` | `date` nullable | Optional end date |
+| `created_by_profile_id` | `uuid` FK -> `profiles.id` | Creator |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `appointment_slots`
+Generated bookable slots for appointment calendars.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Slot id |
+| `calendar_id` | `uuid` FK -> `calendars.id` | Required |
+| `starts_at` | `timestamptz` | Required |
+| `ends_at` | `timestamptz` | Required |
+| `status` | `text` | `available`, `held`, `booked`, `blocked` |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `appointments`
+Booked appointments between family/guests and school departments.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Appointment id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `calendar_id` | `uuid` FK -> `calendars.id` | Required |
+| `slot_id` | `uuid` FK -> `appointment_slots.id` nullable | Optional if manually scheduled |
+| `requester_profile_id` | `uuid` FK -> `profiles.id` nullable | Parent/staff requester |
+| `guest_request_id` | `uuid` FK -> `guest_tour_requests.id` nullable | Guest-origin request |
+| `status` | `text` | `requested`, `confirmed`, `completed`, `canceled`, `no_show` |
+| `requested_by_role` | `text` | `guest`, `parent`, `staff` |
+| `starts_at` | `timestamptz` | Required |
+| `ends_at` | `timestamptz` | Required |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `appointment_notes`
+Internal record of appointment outcomes and follow-up notes.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Note id |
+| `appointment_id` | `uuid` FK -> `appointments.id` | Required |
+| `author_profile_id` | `uuid` FK -> `profiles.id` | Staff author |
+| `note_body` | `text` | Internal note |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `teacher_schedule_blocks`
+Structured teacher schedule assignments for payroll and weekly planning.
+
+After MVP: keep out of the initial migration unless teacher scheduling is pulled forward.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Schedule block id |
+| `school_id` | `uuid` FK -> `schools.id` | Required |
+| `teacher_profile_id` | `uuid` FK -> `profiles.id` | Teacher |
+| `calendar_event_id` | `uuid` FK -> `calendar_events.id` nullable | Linked event if modeled on teacher calendar |
+| `starts_at` | `timestamptz` | Required |
+| `ends_at` | `timestamptz` | Required |
+| `pay_rate_snapshot` | `numeric` nullable | Optional pay-rate snapshot |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `student_tuition_accounts`
+Per-student tuition billing configuration.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Account id |
+| `student_id` | `uuid` FK -> `students.id` | Required |
+| `billing_frequency` | `text` | `monthly` initially |
+| `is_active` | `boolean` | Default `true` |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `tuition_periods`
+Billing periods for a student's tuition account.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Period id |
+| `tuition_account_id` | `uuid` FK -> `student_tuition_accounts.id` | Required |
+| `period_label` | `text` | Example: `2026-09` |
+| `due_date` | `date` | Required |
+| `status` | `text` | `open`, `paid`, `overdue`, `canceled` |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `tuition_quotes`
+Date-sensitive payable amounts for a tuition period.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Quote id |
+| `tuition_period_id` | `uuid` FK -> `tuition_periods.id` | Required |
+| `quote_type` | `text` | `early`, `mid`, `standard`, `late_fee` |
+| `valid_from` | `date` | Required |
+| `valid_to` | `date` | Required |
+| `amount` | `numeric` | Required |
+| `payment_reference` | `text` unique | Unique staff/parent reconciliation id |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `payment_records`
+Recorded payments or manual reconciliations against tuition quotes.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Payment record id |
+| `tuition_quote_id` | `uuid` FK -> `tuition_quotes.id` | Required |
+| `student_id` | `uuid` FK -> `students.id` | Required |
+| `payment_method` | `text` | `transfer`, `deposit`, `cash`, `stripe`, `mercado_pago` |
+| `status` | `text` | `pending`, `paid`, `failed`, `canceled` |
+| `paid_at` | `timestamptz` nullable | Payment timestamp |
+| `recorded_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Staff recorder for manual payments |
+| `external_reference` | `text` nullable | Transfer/deposit reference |
+| `created_at` | `timestamptz` | Default `now()` |
+
+MVP note:
+- `payment_records` supports manual reconciliation first (`transfer`, `deposit`, `cash`).
+- Direct gateway methods (`stripe`, `mercado_pago`) are after-MVP extensions.
+
+#### `guest_tour_requests`
+Public (non-auth) tour/info requests submitted through the guest calendar flow.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Request id |
+| `school_id` | `uuid` FK -> `schools.id` | Target school |
+| `requested_datetime` | `timestamptz` | Requested tour/meeting time |
+| `parent_name` | `text` | Requester name |
+| `contact_email` | `text` | Contact channel |
+| `contact_phone` | `text` nullable | Optional contact channel |
+| `notes` | `text` nullable | Extra context |
+| `status` | `text` | `requested`, `confirmed`, `completed`, `canceled` |
+| `created_at` | `timestamptz` | Default `now()` |
+
+### Access Rules (RLS Baseline)
+
+- Superadmin can bypass school scope for platform maintenance operations.
+- School members are always scoped to their active `school_memberships` records.
+- School owner has full control of school-side users, assignments, and content.
+- Direction/coordination can manage operational and communication scopes defined by policy.
+- Teachers and clerks can read/write only within assigned student/class/work scopes.
+- Clerk user-directory access is directory-style and excludes privileged-role modification.
+- Coordination can manage teachers, students, and parents within school scope, but not school owner or superadmin roles.
+- Parents can read only student links, threads, and messages where they are participants and linked guardians.
+- Parent-only PII (`CURP`, `RFC`, identity docs) is restricted to authorized staff roles plus the owning parent.
+- Students do not sign in; all student-related data visibility is mediated through approved parent accounts.
+- Student medical fields, pickup authorizations, and incident-sensitive records are restricted to appropriate school staff roles and linked parents.
+- Guests do not sign in and can only submit/view their own public calendar tour/info requests.
+- Guest flows cannot access parent/student messaging, tuition, grades, or any enrolled-family records.
+- Announcements are readable if the current profile matches the target audience.
+- Appointment notes linked to students are visible only to appropriate school staff roles.
+
+### Migration Notes
+
+- Add unique constraints:
+	- `schools(slug)`
+	- `school_memberships(school_id, profile_id, school_role)`
+	- `parent_profiles(profile_id)`
+	- `staff_profiles(profile_id)`
+	- `student_guardians(student_id, guardian_profile_id)`
+	- `thread_participants(thread_id, profile_id)`
+	- `teacher_class_assignments(teacher_profile_id, class_id, subject_name)`
+	- `tuition_quotes(payment_reference)`
+- Add indexes:
+	- `school_memberships(school_id, school_role)`
+	- `students(school_id, curp)`
+	- `student_pickup_contacts(student_id, status)`
+	- `student_pickup_audit_logs(student_id, created_at)`
+	- `messages(thread_id, created_at)`
+	- `threads(school_id, student_id, updated_at)`
+	- `announcements(published_at desc)`
+	- `guest_tour_requests(school_id, requested_datetime)`
+	- `appointments(school_id, status, starts_at)`
+	- `payment_records(student_id, status, paid_at)`
+	- `notification_deliveries(profile_id, in_app_status)`
+- Add trigger function to maintain `updated_at` on mutable tables.
 
 ---
 

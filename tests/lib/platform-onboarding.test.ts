@@ -1,4 +1,10 @@
-import { deriveParentApprovalStatus, resolveProfileIdentity } from "@/lib/platform-onboarding";
+import {
+  deriveParentApprovalStatus,
+  resolveEffectiveDashboardRole,
+  resolveHighestHierarchyRole,
+  resolveDashboardPath,
+  resolveProfileIdentity,
+} from "@/lib/platform-onboarding";
 
 describe("deriveParentApprovalStatus", () => {
   it("returns approved when membership is approved", () => {
@@ -61,5 +67,68 @@ describe("resolveProfileIdentity", () => {
       fullName: "Virtuos Parent",
       email: null,
     });
+  });
+});
+
+describe("resolveDashboardPath", () => {
+  it("routes superadmin users to superadmin dashboard", () => {
+    expect(
+      resolveDashboardPath({
+        platformRole: "superadmin",
+        schoolRoles: ["parent"],
+      })
+    ).toBe("/platfrom/dashboard/superadmin");
+  });
+
+  it("routes staff roles to staff dashboard", () => {
+    expect(
+      resolveDashboardPath({
+        platformRole: null,
+        schoolRoles: ["teacher"],
+      })
+    ).toBe("/platfrom/dashboard/staff");
+  });
+
+  it("routes remaining approved users to parent dashboard", () => {
+    expect(
+      resolveDashboardPath({
+        platformRole: null,
+        schoolRoles: ["parent"],
+      })
+    ).toBe("/platfrom/dashboard/parent");
+  });
+});
+
+describe("resolveEffectiveDashboardRole", () => {
+  it("returns superadmin when platform role is superadmin", () => {
+    expect(resolveEffectiveDashboardRole({ platformRole: "superadmin", schoolRoles: ["teacher"] })).toBe("superadmin");
+  });
+
+  it("returns staff when approved membership role is staff", () => {
+    expect(resolveEffectiveDashboardRole({ platformRole: null, schoolRoles: ["coordination"] })).toBe("staff");
+  });
+
+  it("returns parent as fallback", () => {
+    expect(resolveEffectiveDashboardRole({ platformRole: null, schoolRoles: ["parent"] })).toBe("parent");
+  });
+});
+
+describe("resolveHighestHierarchyRole", () => {
+  it("returns the strongest role by hierarchy", () => {
+    expect(
+      resolveHighestHierarchyRole({
+        platformRole: null,
+        schoolRoles: ["teacher", "school_owner"],
+      })
+    ).toBe("school_owner");
+  });
+
+  it("returns superadmin when platform role is superadmin", () => {
+    expect(
+      resolveHighestHierarchyRole({
+        platformRole: "superadmin",
+        schoolRoles: ["school_owner"],
+      })
+    ).toBe("superadmin");
   });
 });

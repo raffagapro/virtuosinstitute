@@ -36,8 +36,8 @@ export function AppNavbar() {
           <Image
             src="https://virtuosinstitute.com.mx/wp-content/uploads/2025/01/Recurso-6virtuos-logo-980x380.png"
             alt={t("nav.logoAria")}
-            width={100}
-            height={38}
+            width={120}
+            height={46}
             priority
             unoptimized
           />

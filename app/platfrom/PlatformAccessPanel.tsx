@@ -26,6 +26,7 @@ interface PlatformAccessPanelProps {
 interface BootstrapResponse {
   ok: boolean;
   status?: "pending" | "approved" | "rejected" | "suspended";
+  dashboardPath?: string;
   reason?: string;
 }
 
@@ -78,6 +79,7 @@ export function PlatformAccessPanel({
   const [isLoading, setIsLoading] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [hasSignInError, setHasSignInError] = useState(false);
+  const [approvedDashboardPath, setApprovedDashboardPath] = useState("/platfrom/dashboard");
 
   const renderGoogleSignInAction = () => (
     <AppButton
@@ -152,6 +154,7 @@ export function PlatformAccessPanel({
     }
 
     if (payload.status === "approved") {
+      setApprovedDashboardPath(payload.dashboardPath ?? "/platfrom/dashboard");
       setStatus("approved");
     } else {
       await signOutWithoutError();
@@ -168,12 +171,12 @@ export function PlatformAccessPanel({
   useEffect(() => {
     if (status === "approved") {
       if (onApprovedRedirect) {
-        onApprovedRedirect("/platfrom/dashboard");
+        onApprovedRedirect(approvedDashboardPath);
       } else {
-        window.location.assign("/platfrom/dashboard");
+        window.location.assign(approvedDashboardPath);
       }
     }
-  }, [onApprovedRedirect, status]);
+  }, [approvedDashboardPath, onApprovedRedirect, status]);
 
   const onGoogleSignIn = async () => {
     setIsSigningIn(true);

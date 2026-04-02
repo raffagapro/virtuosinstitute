@@ -4,3 +4,7 @@ export { AppSectionLabel } from "./AppSectionLabel";
 export { AppSectionHeading } from "./AppSectionHeading";
 export { AppContactInfoGroup } from "./AppContactInfoGroup";
 export { AppSocialLinks } from "./AppSocialLinks";
+export { AppDashboardShell } from "./AppDashboardShell";
+export { AppDashboardCard } from "./AppDashboardCard";
+export { AppDashboardNavbar } from "./AppDashboardNavbar";
+export { AppDashboardSidebar } from "./AppDashboardSidebar";

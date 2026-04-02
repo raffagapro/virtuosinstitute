@@ -5,6 +5,7 @@ import { buildParentReviewEmail } from "@/lib/invite-templates/parent-review";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase";
 import {
   deriveParentApprovalStatus,
+  resolveDashboardPath,
   resolveProfileIdentity,
   type ApprovalStatus,
 } from "@/lib/platform-onboarding";
@@ -17,6 +18,10 @@ interface MembershipRow {
 interface ParentApprovalRow {
   id: string;
   status: ApprovalStatus;
+}
+
+interface MembershipRoleRow {
+  school_role: string;
 }
 
 function getBearerToken(request: Request): string | null {
@@ -124,6 +129,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "profile-upsert-failed" }, { status: 500 });
   }
 
+  const { data: profileRow, error: profileReadError } = await adminSupabase
+    .from("profiles")
+    .select("platform_role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileReadError) {
+    return NextResponse.json({ ok: false, reason: "profile-read-failed" }, { status: 500 });
+  }
+
   const { data: existingMembershipRows, error: membershipReadError } = await adminSupabase
     .from("school_memberships")
     .select("id, approval_status")
@@ -217,6 +232,24 @@ export async function POST(request: Request) {
     requestStatus: approval?.status ?? null,
   });
 
+  const { data: roleRows, error: roleReadError } = await adminSupabase
+    .from("school_memberships")
+    .select("school_role")
+    .eq("profile_id", user.id)
+    .eq("is_active", true)
+    .eq("approval_status", "approved");
+
+  if (roleReadError) {
+    return NextResponse.json({ ok: false, reason: "role-read-failed" }, { status: 500 });
+  }
+
+  const platformRole = ((profileRow as { platform_role: string | null } | null)?.platform_role ?? null);
+  const schoolRoles = ((roleRows as MembershipRoleRow[] | null) ?? []).map((row) => row.school_role);
+  const dashboardPath = resolveDashboardPath({
+    platformRole,
+    schoolRoles,
+  });
+
   if (didCreateApprovalRequest) {
     await sendParentReviewEmailIfPossible({
       email,
@@ -240,7 +273,8 @@ export async function POST(request: Request) {
     ok: true,
     authenticated: true,
     status,
-    schoolId: null,
-    schoolSlug: null,
+    platformRole,
+    schoolRoles,
+    dashboardPath,
   });
 }

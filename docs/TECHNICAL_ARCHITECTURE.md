@@ -126,14 +126,26 @@ Browser request
 
 The authenticated app is split into three role-scoped dashboard surfaces:
 
-- Superadmin dashboard: `app/(app)/superadmin/**`
+- Superadmin dashboard: `/platfrom/dashboard/superadmin`
   - For platform-wide maintenance and governance.
-- School staff dashboard: `app/(app)/staff/**`
+- School staff dashboard: `/platfrom/dashboard/staff`
   - For school operations (`school_owner`, `direction`, `coordination`, `teacher`, `clerk`).
-- Parent dashboard: `app/(app)/parent/**`
+- Parent dashboard: `/platfrom/dashboard/parent`
   - For parent communication, announcements, and child information.
 
-Post-login routing resolves the user's effective role and sends them to the correct dashboard root. Direct URL access to other dashboard surfaces is denied by middleware and server-side authorization checks.
+Post-login routing resolves the user's effective role and sends them to the correct dashboard root. `/platfrom/dashboard` is a resolver route that redirects to the role-specific path returned by bootstrap (`dashboardPath`). Direct URL access to other dashboard surfaces is denied by the dashboard gate check, which redirects to the resolved role path when mismatched.
+
+Shared dashboard presentation is centralized in reusable UI primitives:
+- `components/ui/AppDashboardShell.tsx`
+- `components/ui/AppDashboardCard.tsx`
+- `components/ui/AppDashboardNavbar.tsx`
+- `components/ui/AppDashboardSidebar.tsx`
+Feature-level dashboards compose these primitives while reducing visibility and capability by role.
+
+Superadmin navigation baseline:
+- Layout: `/platfrom/dashboard/superadmin` uses fixed top navbar + left sidebar.
+- Sidebar page links: `/platfrom/dashboard/superadmin` (home) and `/platfrom/dashboard/superadmin/users`.
+- Users directory data source: `GET /api/admin/users-directory` (superadmin-only).
 
 ### Role-Oriented Feature Surfaces
 

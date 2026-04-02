@@ -78,18 +78,32 @@ export async function GET(request: Request) {
     platform_role: string | null;
     preferred_locale: string;
     created_at: string;
-  }> | null) ?? []).map((profileRow) => {
+  }> | null) ?? [])
+    .filter((profileRow) => profileRow.platform_role !== "superadmin")
+    .map((profileRow) => {
     const memberships = membershipByProfileId.get(profileRow.id) ?? [];
-    const membershipRoles = memberships.map((membership) => membership.school_role);
+    const displayMemberships = memberships.filter(
+      (membership) => membership.is_active || membership.approval_status === "pending"
+    );
+    const membershipRoles = Array.from(new Set(displayMemberships.map((membership) => membership.school_role)));
+    const isActiveMembership = memberships.some(
+      (membership) => membership.is_active && membership.approval_status === "approved"
+    );
+    const hasPendingAuthorization = memberships.some(
+      (membership) => membership.approval_status === "pending"
+    );
+    const isActive = isActiveMembership;
 
     return {
       id: profileRow.id,
       fullName: profileRow.full_name,
       email: profileRow.email,
       platformRole: profileRow.platform_role,
+      isActive,
       preferredLocale: profileRow.preferred_locale,
       createdAt: profileRow.created_at,
       membershipRoles,
+      hasPendingAuthorization,
     };
   });
 

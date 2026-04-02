@@ -9,7 +9,8 @@ Virtuós Institute is a Next.js App Router application with two distinct product
 
 Core runtime principles:
 
-- The marketing site is fully statically exportable (`output: 'export'`). No server runtime needed for Phase 1.
+- Marketing routes are static-first, but the companion app uses runtime API handlers; default app builds run with server runtime enabled.
+- Static export mode (`output: 'export'`) is optional and intended only for marketing-only builds.
 - The companion app uses Supabase as backend (auth, database, storage).
 - All user-facing copy goes through the i18n layer — no hardcoded strings in components.
 - `components/ui/*` is the single source of truth for primitive UI building blocks.
@@ -145,12 +146,15 @@ Feature-level dashboards compose these primitives while reducing visibility and 
 Superadmin navigation baseline:
 - Layout: `/platfrom/dashboard/superadmin` uses fixed top navbar + left sidebar.
 - Sidebar page links: `/platfrom/dashboard/superadmin` (home) and `/platfrom/dashboard/superadmin/users`.
+- Sidebar users link shows a pending-authorization badge (icon + count) sourced from superadmin users-directory data.
 - Users directory data source: `GET /api/admin/users-directory` (superadmin-only).
+- Users directory table ordering prioritizes pending-authorization users at the top before secondary ordering controls.
 
 ### Role-Oriented Feature Surfaces
 
 - Superadmin dashboard:
   - global user directory, search/filter by type/role/status
+  - feature-flagged dev tools tab for seeded email/password account creation (QA workflows)
   - user activation/deactivation
   - platform/database/storage usage visibility
   - mailer template administration
@@ -174,6 +178,7 @@ Superadmin navigation baseline:
 - SQL migration sequencing is documented in `docs/SQL_MIGRATION_PLAN.md`.
 - First-pass database policy design is documented in `docs/RLS_POLICY_PLAN.md`.
 - Auth provider: Supabase Auth with Google OAuth as the primary sign-in provider.
+- Optional QA/future path: feature-flagged email/password sign-in can be enabled per environment for controlled testing or staged rollout.
 - App roles are split into platform-level and operational domains.
 - Platform role:
   - `superadmin`: platform maintenance and governance, highest access.
@@ -237,6 +242,17 @@ Current onboarding-related route handlers:
   - Returns graceful `service-role-missing` failure when server credentials are absent
   - Sends localized approval email after successful approval when mailer config is present
   - Uses global single-school onboarding scope
+- `app/api/auth/request-password-reset/route.ts`
+  - App-managed password recovery delivery via Brevo
+  - Uses Supabase `auth.admin.generateLink` and prefers callback token-hash links
+  - Falls back to Supabase action link when token-hash properties are unavailable
+- `app/api/auth/request-signup-confirmation/route.ts`
+  - App-managed signup confirmation delivery via Brevo
+  - Uses Supabase `auth.admin.generateLink` and prefers callback token-hash links
+  - Falls back to Supabase action link when token-hash properties are unavailable
+- `app/api/admin/email-users/route.ts`
+  - Superadmin-only email/password test-account provisioning endpoint
+  - Writes matching profile and membership records for role-scoped dashboard testing
 
 ### Identity Data Modeling Strategy
 

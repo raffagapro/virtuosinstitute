@@ -77,6 +77,18 @@
       "local": "not-applied",
       "linked": "applied",
       "notes": "Drops remaining school_id columns, removes school-scoped helpers, and removes schools table"
+    },
+    "014_required_profile_fields.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "not-applied",
+      "notes": "Reviewed and ready to push"
+    },
+    "015_profiles_date_of_birth.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "not-applied",
+      "notes": "Reviewed and ready to push"
     }
   }
 }

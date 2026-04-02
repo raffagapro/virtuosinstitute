@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ComponentType, useEffect, useMemo, useState } from "react";
 import {
@@ -35,6 +36,11 @@ interface NavbarContextResponse {
   effectiveRole: "superadmin" | "staff" | "parent";
   highestRole: string | null;
   profilePath: string;
+}
+
+interface ProfileUpdatedDetail {
+  fullName?: string | null;
+  email?: string | null;
 }
 
 type BadgeTone =
@@ -155,6 +161,28 @@ export function AppDashboardNavbar({
     };
   }, [supabase]);
 
+  useEffect(() => {
+    const onProfileUpdated = (event: Event) => {
+      const customEvent = event as CustomEvent<ProfileUpdatedDetail>;
+      const fullName = customEvent.detail?.fullName;
+      const emailValue = customEvent.detail?.email;
+
+      if (typeof fullName === "string") {
+        setDisplayName(fullName);
+      }
+
+      if (typeof emailValue === "string") {
+        setEmail(emailValue);
+      }
+    };
+
+    window.addEventListener("app:profile-updated", onProfileUpdated as EventListener);
+
+    return () => {
+      window.removeEventListener("app:profile-updated", onProfileUpdated as EventListener);
+    };
+  }, []);
+
   const fallbackBadgeTone: BadgeTone = pathname.includes("/superadmin/") || pathname.endsWith("/superadmin")
     ? "superadmin"
     : pathname.includes("/staff/") || pathname.endsWith("/staff")
@@ -197,7 +225,7 @@ export function AppDashboardNavbar({
         </a>
 
         <div className="flex items-center gap-3">
-          <a
+          <Link
             href={profilePath}
             aria-label={profileLabel}
             className="relative inline-flex items-center font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[13px] uppercase tracking-[1px] text-white transition-colors leading-[1] px-[13px] py-[11px] rounded-[23px] bg-[#36e7e1] hover:bg-[#FDCC00]"
@@ -216,7 +244,7 @@ export function AppDashboardNavbar({
             >
               <BadgeIcon className="h-2.5 w-2.5" />
             </span>
-          </a>
+          </Link>
 
           <button
             type="button"

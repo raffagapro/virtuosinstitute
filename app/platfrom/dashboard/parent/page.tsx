@@ -1,28 +1,21 @@
-import { PlatformDashboardGate } from "@/app/platfrom/dashboard/PlatformDashboardGate";
-import { AppDashboardCard, AppDashboardShell } from "@/components/ui";
+import { AppDashboardCard } from "@/components/ui";
 import { defaultLocale, translate } from "@/lib/i18n";
 
 export default function ParentDashboardPage() {
   const locale = defaultLocale;
 
   return (
-    <PlatformDashboardGate
-      checkingLabel={translate(locale, "platform.entry.checking")}
-      expectedPath="/platfrom/dashboard/parent"
-    >
-      <AppDashboardShell
-        badge={translate(locale, "platform.dashboard.parent.badge")}
-        title={translate(locale, "platform.dashboard.parent.title")}
-        subtitle={translate(locale, "platform.dashboard.parent.subtitle")}
-        logoAriaLabel={translate(locale, "nav.logoAria")}
-        profileLabel={translate(locale, "platform.nav.profile")}
-        signOutLabel={translate(locale, "platform.nav.signOut")}
-        signingOutLabel={translate(locale, "platform.nav.signingOut")}
-        loadingIdentityLabel={translate(locale, "platform.nav.loadingIdentity")}
-        roleSuperadminLabel={translate(locale, "platform.nav.role.superadmin")}
-        roleStaffLabel={translate(locale, "platform.nav.role.staff")}
-        roleParentLabel={translate(locale, "platform.nav.role.parent")}
-      >
+    <div className="space-y-4 rounded-2xl border border-[#d6e8f6] bg-white p-5 sm:p-6">
+      <div>
+        <h1 className="font-['Sora',Helvetica,Arial,sans-serif] text-2xl font-bold text-[#003F60] sm:text-3xl">
+          {translate(locale, "platform.dashboard.parent.title")}
+        </h1>
+        <p className="mt-2 text-sm text-[#2b5876] sm:text-base">
+          {translate(locale, "platform.dashboard.parent.subtitle")}
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <AppDashboardCard
           title={translate(locale, "platform.dashboard.parent.children.title")}
           description={translate(locale, "platform.dashboard.parent.children.description")}
@@ -35,7 +28,7 @@ export default function ParentDashboardPage() {
           title={translate(locale, "platform.dashboard.parent.calendar.title")}
           description={translate(locale, "platform.dashboard.parent.calendar.description")}
         />
-      </AppDashboardShell>
-    </PlatformDashboardGate>
+      </div>
+    </div>
   );
 }

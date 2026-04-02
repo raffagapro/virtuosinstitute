@@ -4,7 +4,6 @@ import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 interface PlatformDashboardGateProps {
-  checkingLabel: string;
   expectedPath?: string;
   children?: ReactNode;
 }
@@ -15,7 +14,7 @@ interface BootstrapResponse {
   dashboardPath?: string;
 }
 
-export function PlatformDashboardGate({ checkingLabel, expectedPath, children }: PlatformDashboardGateProps) {
+export function PlatformDashboardGate({ expectedPath, children }: PlatformDashboardGateProps) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [isResolved, setIsResolved] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -56,7 +55,9 @@ export function PlatformDashboardGate({ checkingLabel, expectedPath, children }:
         return;
       }
 
-      if (expectedPath !== dashboardPath) {
+      // Allow access to nested routes within the dashboard (e.g., /platfrom/dashboard/parent/profile)
+      const isWithinDashboard = expectedPath === dashboardPath || expectedPath.startsWith(`${dashboardPath}/`);
+      if (!isWithinDashboard) {
         window.location.assign(dashboardPath);
         return;
       }
@@ -69,7 +70,13 @@ export function PlatformDashboardGate({ checkingLabel, expectedPath, children }:
   }, []);
 
   if (isChecking || !isResolved) {
-    return <p className="text-lg text-[#2b5876]">{checkingLabel}</p>;
+    return (
+      <div className="flex h-screen items-center justify-center bg-white">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#eef4fa] border-t-[#fa4361]" />
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;

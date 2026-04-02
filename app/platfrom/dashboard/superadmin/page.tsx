@@ -28,6 +28,10 @@ export default function SuperadminDashboardHomePage() {
           title={translate(locale, "platform.dashboard.superadmin.home.settings.title")}
           description={translate(locale, "platform.dashboard.superadmin.home.settings.description")}
         />
+        <AppDashboardCard
+          title={translate(locale, "platform.dashboard.superadmin.home.dev.title")}
+          description={translate(locale, "platform.dashboard.superadmin.home.dev.description")}
+        />
       </div>
     </div>
   );

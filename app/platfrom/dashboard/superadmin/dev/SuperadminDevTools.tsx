@@ -3,6 +3,7 @@
 import { FormEvent, useMemo, useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { AppButton } from "@/components/ui";
+import { emitSuperadminPendingUsersRefresh } from "@/lib/dashboard-events";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 interface SuperadminDevToolsProps {
@@ -164,6 +165,7 @@ export function SuperadminDevTools({
       tone: "success",
       message: quickUnauthorizedSuccessLabel.replace("{email}", payload.email ?? quickUnauthorizedEmail),
     });
+    emitSuperadminPendingUsersRefresh();
     setQuickUnauthorizedEmail("");
     setQuickUnauthorizedPassword("");
     setIsQuickSubmitting(false);
@@ -205,6 +207,7 @@ export function SuperadminDevTools({
     }
 
     setFeedback({ tone: "success", message: successLabel.replace("{email}", payload.email ?? email) });
+    emitSuperadminPendingUsersRefresh();
     setPassword("");
     setIsSubmitting(false);
   };

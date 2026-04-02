@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { SUPERADMIN_PENDING_USERS_REFRESH_EVENT } from "@/lib/dashboard-events";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 export interface AppDashboardSidebarItem {
@@ -41,18 +42,22 @@ export function AppDashboardSidebar({
 
   useEffect(() => {
     let isCancelled = false;
+    let activeRequestId = 0;
 
     const fetchPendingUsersCount = async () => {
       if (!shouldLoadPendingAuthCount) {
         return;
       }
 
+      activeRequestId += 1;
+      const requestId = activeRequestId;
+
       const supabase = getSupabaseBrowserClient();
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (!session?.access_token || isCancelled) {
+      if (!session?.access_token || isCancelled || requestId !== activeRequestId) {
         return;
       }
 
@@ -64,12 +69,12 @@ export function AppDashboardSidebar({
         },
       });
 
-      if (!response.ok || isCancelled) {
+      if (!response.ok || isCancelled || requestId !== activeRequestId) {
         return;
       }
 
       const payload = (await response.json()) as SidebarUsersDirectoryResponse;
-      if (!payload.ok || !payload.users || isCancelled) {
+      if (!payload.ok || !payload.users || isCancelled || requestId !== activeRequestId) {
         return;
       }
 
@@ -80,12 +85,33 @@ export function AppDashboardSidebar({
       setPendingUsersCount(nextPendingCount);
     };
 
+    const handleWindowFocus = () => {
+      void fetchPendingUsersCount();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void fetchPendingUsersCount();
+      }
+    };
+
+    const handleRefreshEvent = () => {
+      void fetchPendingUsersCount();
+    };
+
     void fetchPendingUsersCount();
+
+    window.addEventListener("focus", handleWindowFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener(SUPERADMIN_PENDING_USERS_REFRESH_EVENT, handleRefreshEvent as EventListener);
 
     return () => {
       isCancelled = true;
+      window.removeEventListener("focus", handleWindowFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener(SUPERADMIN_PENDING_USERS_REFRESH_EVENT, handleRefreshEvent as EventListener);
     };
-  }, [shouldLoadPendingAuthCount]);
+  }, [pathname, shouldLoadPendingAuthCount]);
 
   return (
     <aside className="w-full self-start rounded-2xl border border-[#d6e8f6] bg-white p-4 md:h-fit md:w-72 md:shrink-0">

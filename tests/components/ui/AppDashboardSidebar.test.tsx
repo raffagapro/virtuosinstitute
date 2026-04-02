@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { AppDashboardSidebar } from "@/components/ui/AppDashboardSidebar";
+import { SUPERADMIN_PENDING_USERS_REFRESH_EVENT } from "@/lib/dashboard-events";
 
 const mockGetSession = jest.fn();
 
@@ -85,5 +86,56 @@ describe("AppDashboardSidebar", () => {
 
     expect(await screen.findByText("2")).toBeInTheDocument();
     expect(screen.getByText("Pending users to authorize: 2")).toHaveClass("sr-only");
+  });
+
+  it("refreshes pending badge when receiving a sidebar refresh event", async () => {
+    mockGetSession.mockResolvedValue({
+      data: {
+        session: {
+          access_token: "token",
+        },
+      },
+    });
+
+    const fetchMock = global.fetch as jest.Mock;
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          users: [{ hasPendingAuthorization: true }],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          users: [
+            { hasPendingAuthorization: true },
+            { hasPendingAuthorization: true },
+          ],
+        }),
+      });
+
+    render(
+      <AppDashboardSidebar
+        ariaLabel="Pages"
+        pendingUsersBadgeLabel="Pending users to authorize: {count}"
+        items={[
+          { href: "/platfrom/dashboard/superadmin", label: "Home" },
+          {
+            href: "/platfrom/dashboard/superadmin/users",
+            label: "Users directory",
+            showPendingAuthBadge: true,
+          },
+        ]}
+      />
+    );
+
+    expect(await screen.findByText("1")).toBeInTheDocument();
+
+    window.dispatchEvent(new CustomEvent(SUPERADMIN_PENDING_USERS_REFRESH_EVENT));
+
+    expect(await screen.findByText("2")).toBeInTheDocument();
   });
 });

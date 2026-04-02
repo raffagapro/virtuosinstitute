@@ -20,6 +20,7 @@ import {
   X,
   Pencil,
 } from "lucide-react";
+import { emitSuperadminPendingUsersRefresh } from "@/lib/dashboard-events";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 interface UserDirectoryEntry {
@@ -404,6 +405,10 @@ export function SuperadminUsersDirectory({
       }
     };
   }, [supabase]);
+
+  useEffect(() => {
+    emitSuperadminPendingUsersRefresh();
+  }, [users]);
 
   const roleOptions = useMemo(() => {
     const uniqueRoles = new Set<string>();

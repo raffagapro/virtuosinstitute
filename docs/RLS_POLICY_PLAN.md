@@ -1,5 +1,7 @@
 # RLS Policy Plan
 
+> Historical baseline: this document reflects the initial school-scoped policy model. Current schema state is single-school global mode after migrations `011`, `012`, and `013`, which removed `schools` and `school_id` tenancy columns.
+
 This document defines the first Row Level Security policy plan for the Virtuós companion platform MVP.
 
 ## What RLS Does

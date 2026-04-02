@@ -82,10 +82,15 @@
 ### Technical Setup
 - [x] Add Supabase project configuration and env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
 - [ ] Configure Supabase Auth provider for Google OAuth sign-in flow
-- [ ] Add app-managed mailer boundary following alchemist-style architecture (`lib/invite-mailer.ts` + template builders)
+- [~] Add app-managed mailer boundary following alchemist-style architecture (`lib/invite-mailer.ts` + template builders)
+  - [x] Brevo provider boundary via `lib/invite-mailer.ts`
+  - [x] Localized onboarding email templates for parent review and approval notifications
+  - [x] Parent receives email when account is created and enters review
+  - [x] Parent receives email when staff approves access
+  - [ ] Add password recovery and signup-confirmation app-managed emails
 - [ ] Configure Supabase Storage private buckets (`identity-documents`, `student-files`, `notification-media`)
-- [ ] Define deterministic storage path conventions by school, entity, and file kind
-- [ ] Add typed Supabase browser/server clients in `lib/supabase/`
+- [ ] Define deterministic storage path conventions by entity and file kind
+- [x] Add typed Supabase browser/server clients in `lib/supabase/`
 - [ ] Add route groups for authenticated app shell (`app/(app)/...`) while preserving static marketing routes
 - [ ] Add protected-route middleware strategy for companion routes
 - [ ] Add public guest calendar route (`app/(public)/tour-calendar`) with no-auth access and strict scope guard
@@ -98,9 +103,31 @@
 ### Data & Auth Setup
 - [x] Create initial schema migration (schools, profiles, school_memberships, parent_profiles, staff_profiles, identity_documents, parent_approval_requests, students, student_guardians, student_documents, student_pickup_contacts, student_pickup_authorizations, student_pickup_audit_logs, academic_classes, teacher_class_assignments, student_tuition_accounts, tuition_periods, tuition_quotes, payment_records, threads, thread_participants, messages, announcements, notification_campaigns, notification_deliveries, media_assets, calendars, calendar_events, availability_rules, appointment_slots, appointments, appointment_notes, guest_tour_requests)
 - [x] Configure role model with platform role (`superadmin`) and school roles (`school_owner`, `direction`, `coordination`, `teacher`, `clerk`)
-- [x] Add baseline RLS policies for superadmin/platform maintenance and school-scoped access boundaries
+- [x] Add baseline RLS policies for superadmin/platform maintenance and role-scoped access boundaries
 - [ ] Add storage metadata and signed-URL access flow for private files
-- [ ] Add approval workflow: parent Google signup -> staff approval -> parent can register children -> staff approves child records
+- [~] Add approval workflow: parent Google signup -> staff approval -> parent can register children -> staff approves child records
+  - [x] Parent first sign-in bootstrap (create `profiles`, pending `school_memberships`, pending `parent_approval_requests`)
+  - [x] Approval-gated platform entry state (`pending` / `approved` / `rejected` / `suspended`)
+  - [x] Superadmin approval action endpoint for parent onboarding review status updates
+  - [x] Pending/suspended users are signed out and shown review-only messaging with home navigation
+  - [x] Pending-review state keeps Google sign-in action visible so users can re-check access after approval
+  - [x] Approved state redirects directly to `/platfrom/dashboard` (no intermediate approved panel)
+  - [x] Rejected users are fully removed from app/auth records during bootstrap (`profiles`, `school_memberships`, `parent_approval_requests`, `auth.users`)
+  - [x] Missing server credentials fail gracefully with setup message (no unhandled env crash)
+  - [x] Account-created review email is sent on first onboarding bootstrap when mailer is configured
+  - [x] Approval email is sent when staff approves account access when mailer is configured
+  - [ ] Parent child-registration flow unlock after approved status
+  - [ ] Staff child-record approval queue UI and actions
+
+### Single-School Refactor (Option 2)
+- [x] Remove school dependency from runtime onboarding flow
+  - [x] Added migration `011_single_school_global_onboarding.sql` to make onboarding `school_id` optional and switch onboarding RLS checks to global membership roles
+  - [x] Added migration `012_detach_schools_foreign_keys.sql` to drop FK references from public tables to `schools` and make remaining `school_id` columns nullable
+  - [x] Added migration `013_drop_school_columns_and_table.sql` to drop remaining `school_id` columns and remove `schools` table entirely
+  - [x] Updated `/api/auth/platform-bootstrap` to create/read parent onboarding records without `school_id`
+  - [x] Updated `/api/admin/parent-approvals` to approve/reject parent onboarding without `school_id`
+  - [x] Added `npm run db:push` aliases for linked/local migration pushes
+  - [x] Completed runtime reference sweep in `app/**`, `lib/**`, and `tests/**` for `school_id` / school-scope helper usage
 - [ ] Add required-field validation by role (parent, student, coordination/direction/owner, teacher)
 - [ ] Add seed data for local development and QA
 

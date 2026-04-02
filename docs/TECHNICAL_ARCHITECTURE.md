@@ -101,6 +101,27 @@ Browser request
 - Guest tour/info flow is exposed through a dedicated public route (for example `app/(public)/tour-calendar/**`) and must not expose any authenticated app data.
 - Shared layout concerns (header/footer/theme/i18n) remain centralized and composable between route groups.
 
+### Approval-Gated Parent Onboarding Bootstrap
+
+- Platform entry at `/platfrom` now runs a server-backed bootstrap before granting app access.
+- On first successful Google sign-in, bootstrap provisioning creates or updates:
+  - `profiles` row for the authenticated user
+  - parent `school_memberships` row with initial `approval_status = 'pending'`
+  - parent review row in `parent_approval_requests` with initial `status = 'pending'`
+- Access state is derived from membership/request status and surfaced to the UI as one of:
+  - `pending`
+  - `approved`
+  - `rejected`
+  - `suspended`
+- Session behavior after bootstrap status resolution:
+  - `approved`: session continues and user is redirected directly to `/platfrom/dashboard`.
+  - `pending` or `suspended`: session is closed and user sees a calm review message with a single path back to marketing home.
+  - `rejected`: account is removed from `profiles`, `school_memberships`, `parent_approval_requests`, and `auth.users`.
+- Email behavior:
+  - first onboarding bootstrap sends a review email confirming the account was created and is pending staff review.
+  - approval action sends a follow-up approval email when access is approved.
+- Dashboard entry route `/platfrom/dashboard` is guarded by the same bootstrap status and redirects back to `/platfrom` when status is not `approved`.
+
 ### Dashboard Surfaces
 
 The authenticated app is split into three role-scoped dashboard surfaces:
@@ -141,12 +162,12 @@ Post-login routing resolves the user's effective role and sends them to the corr
 - SQL migration sequencing is documented in `docs/SQL_MIGRATION_PLAN.md`.
 - First-pass database policy design is documented in `docs/RLS_POLICY_PLAN.md`.
 - Auth provider: Supabase Auth with Google OAuth as the primary sign-in provider.
-- App roles are split into platform-level and school-level domains.
+- App roles are split into platform-level and operational domains.
 - Platform role:
-  - `superadmin`: platform maintenance, cross-school governance, highest access.
+  - `superadmin`: platform maintenance and governance, highest access.
 - School and user roles:
-  - `school_owner`: highest school-level access (below superadmin).
-  - `direction`: school principal-level access.
+  - `school_owner`: highest operational access (below superadmin).
+  - `direction`: principal-level access.
   - `coordination`: department-head access.
   - `teacher`
   - `clerk`
@@ -154,9 +175,9 @@ Post-login routing resolves the user's effective role and sends them to the corr
   - `student` (non-login record owned by parent relationship)
   - `guest` (non-login, calendar-only requester)
 - Authorization model:
-  - `superadmin`: full platform access, including cross-school maintenance operations.
-  - `school_owner`: full control of school-side users, assignments, and school content.
-  - `direction` and `coordination`: elevated school operations and oversight within school scope.
+  - `superadmin`: full platform access, including maintenance operations.
+  - `school_owner`: full control of users, assignments, and operational content.
+  - `direction` and `coordination`: elevated operations and oversight within defined policy scope.
   - `teacher` and `clerk`: operational access constrained to assigned scopes.
   - `parent`: can access only threads/announcements/student context tied to linked students.
   - `student`: no direct authentication; student information is surfaced through linked parent accounts.
@@ -170,8 +191,8 @@ Post-login routing resolves the user's effective role and sends them to the corr
 
 - Authentication identity is created through Google OAuth.
 - Students are not authentication identities and are never expected to sign in.
-- App-level role and school associations are maintained in database tables, not inferred from OAuth claims alone.
-- User authorization always resolves from DB role assignments + school membership context.
+- App-level role associations are maintained in database tables, not inferred from OAuth claims alone.
+- User authorization always resolves from DB role assignments + linked domain relationships.
 
 ### Data Access Layer
 
@@ -188,6 +209,22 @@ Post-login routing resolves the user's effective role and sends them to the corr
   - `lib/data/notifications.ts`
   - `lib/data/mailer-templates.ts`
 - Generated DB types (`types/database.types.ts`) are the source of truth for table contracts.
+
+Current onboarding-related route handlers:
+- `app/api/auth/platform-bootstrap/route.ts`
+  - Validates bearer session token
+  - Provisions first-login parent records
+  - Returns derived approval status used by platform entry and dashboard gate
+  - Enforces pending/suspended sign-out and rejected-account cleanup flow
+  - Returns graceful `service-role-missing` failure when server credentials are absent
+  - Sends localized review email when onboarding records are first created and mailer config is present
+  - Uses global single-school onboarding scope
+- `app/api/admin/parent-approvals/route.ts`
+  - Superadmin-only status update action for parent approval workflow
+  - Writes review decision into `school_memberships.approval_status` and `parent_approval_requests`
+  - Returns graceful `service-role-missing` failure when server credentials are absent
+  - Sends localized approval email after successful approval when mailer config is present
+  - Uses global single-school onboarding scope
 
 ### Identity Data Modeling Strategy
 
@@ -226,6 +263,10 @@ Post-login routing resolves the user's effective role and sends them to the corr
 - Recommended modules:
   - `lib/invite-mailer.ts` or `lib/mailer.ts` as the provider boundary
   - `lib/invite-templates/**` or `lib/mailer-templates/**` for template builders
+- Current implementation uses:
+  - `lib/invite-mailer.ts` as the Brevo provider boundary
+  - `lib/invite-templates/parent-review.ts` for onboarding-created/pending-review email
+  - `lib/invite-templates/parent-approved.ts` for approval notification email
 - Email link generation for auth/invite flows stays server-side.
 - Notification, appointment-confirmation, appointment-invitation, and approval emails should all use the same provider boundary.
 - Template editing in the superadmin dashboard should update stored template content/config, while keeping delivery centralized through the shared mailer boundary.
@@ -290,17 +331,17 @@ This gives one persistence model, one slot-generation engine, one permissions mo
   - `identity-documents`
   - `student-files`
   - `notification-media`
-- Recommended path strategy: deterministic school-scoped paths by entity and file kind.
+- Recommended path strategy: deterministic entity-scoped paths by entity and file kind.
 - Recommended path conventions:
-  - `identity-documents/school_{schoolId}/parents/{profileId}/{documentType}/{fileId}.{ext}`
-  - `identity-documents/school_{schoolId}/staff/{profileId}/{documentType}/{fileId}.{ext}`
-  - `identity-documents/school_{schoolId}/students/{studentId}/pickup/{pickupContactId}/{fileId}.{ext}`
-  - `student-files/school_{schoolId}/students/{studentId}/documents/{fileId}.{ext}`
-  - `student-files/school_{schoolId}/students/{studentId}/grades/{fileId}.pdf`
-  - `student-files/school_{schoolId}/students/{studentId}/evaluations/{fileId}.pdf`
-  - `notification-media/school_{schoolId}/campaigns/{campaignId}/{fileId}.{ext}`
+  - `identity-documents/parents/{profileId}/{documentType}/{fileId}.{ext}`
+  - `identity-documents/staff/{profileId}/{documentType}/{fileId}.{ext}`
+  - `identity-documents/students/{studentId}/pickup/{pickupContactId}/{fileId}.{ext}`
+  - `student-files/students/{studentId}/documents/{fileId}.{ext}`
+  - `student-files/students/{studentId}/grades/{fileId}.pdf`
+  - `student-files/students/{studentId}/evaluations/{fileId}.pdf`
+  - `notification-media/campaigns/{campaignId}/{fileId}.{ext}`
 - Keep path segments stable and identifier-based; do not use mutable names in storage paths.
-- Teacher-uploaded grades/evaluations are stored as PDFs in object storage with school-scoped paths.
+- Teacher-uploaded grades/evaluations are stored as PDFs in object storage with deterministic entity-scoped paths.
 - Notification banners and carousel media should be image-optimized before upload and stored in object storage with derivative sizes where needed.
 - DB rows should store metadata and storage path references, not large binary payloads.
 - Identity documents and pickup-authorization evidence should follow the same object-storage-plus-metadata pattern.

@@ -59,6 +59,24 @@
       "local": "not-applied",
       "linked": "applied",
       "notes": "Implemented: baseline RLS helpers and policies for core domain tables"
+    },
+    "011_single_school_global_onboarding.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Single-school mode: global onboarding memberships/approvals and RLS update"
+    },
+    "012_detach_schools_foreign_keys.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Drops FK references to public.schools and makes school_id nullable where present"
+    },
+    "013_drop_school_columns_and_table.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Drops remaining school_id columns, removes school-scoped helpers, and removes schools table"
     }
   }
 }

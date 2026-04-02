@@ -61,10 +61,16 @@ export function AppNavbar() {
               {t(key)}
             </a>
           ))}
+          <a
+            href="/platfrom"
+            className="inline-flex items-center font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[13px] uppercase tracking-[1px] text-white hover:text-white transition-colors leading-[1] px-[13px] py-[11px] rounded-[23px] bg-[#36e7e1] hover:bg-[#FDCC00] ml-1"
+          >
+            {t("nav.plataforma")}
+          </a>
           {/* CTA pill */}
           <a
             href="#contacto"
-            className="inline-flex items-center font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[14px] uppercase tracking-[1px] text-white hover:text-white transition-colors leading-[1] px-[15px] py-[14px] rounded-[25px] bg-[#fa4361] hover:bg-[#FDCC00] ml-2"
+            className="inline-flex items-center font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[13px] uppercase tracking-[1px] text-white hover:text-white transition-colors leading-[1] px-[13px] py-[11px] rounded-[23px] bg-[#fa4361] hover:bg-[#FDCC00] ml-1"
           >
             {t("nav.contacto")}
           </a>
@@ -108,10 +114,16 @@ export function AppNavbar() {
               {t(key)}
             </a>
           ))}
+          <a
+            href="/platfrom"
+            className="font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[13px] uppercase tracking-[1px] text-white hover:text-white transition-colors px-[13px] py-[11px] rounded-[23px] bg-[#36e7e1] hover:bg-[#FDCC00] self-start"
+          >
+            {t("nav.plataforma")}
+          </a>
           {/* CTA pill */}
           <a
             href="#contacto"
-            className="font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[14px] uppercase tracking-[1px] text-white hover:text-white transition-colors px-[15px] py-[14px] rounded-[25px] bg-[#fa4361] hover:bg-[#FDCC00] self-start"
+            className="font-['Sora',Helvetica,Arial,sans-serif] font-semibold text-[13px] uppercase tracking-[1px] text-white hover:text-white transition-colors px-[13px] py-[11px] rounded-[23px] bg-[#fa4361] hover:bg-[#FDCC00] self-start"
             onClick={() => setOpen(false)}
           >
             {t("nav.contacto")}

@@ -1,22 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 interface PlatformDashboardGateProps {
   checkingLabel: string;
-  title: string;
-  subtitle: string;
+  expectedPath?: string;
+  children?: ReactNode;
 }
 
 interface BootstrapResponse {
   ok: boolean;
   status?: "pending" | "approved" | "rejected" | "suspended";
+  dashboardPath?: string;
 }
 
-export function PlatformDashboardGate({ checkingLabel, title, subtitle }: PlatformDashboardGateProps) {
+export function PlatformDashboardGate({ checkingLabel, expectedPath, children }: PlatformDashboardGateProps) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
-  const [isApproved, setIsApproved] = useState(false);
+  const [isResolved, setIsResolved] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
@@ -49,21 +50,27 @@ export function PlatformDashboardGate({ checkingLabel, title, subtitle }: Platfo
         return;
       }
 
-      setIsApproved(true);
+      const dashboardPath = payload.dashboardPath ?? "/platfrom/dashboard/parent";
+      if (!expectedPath) {
+        window.location.assign(dashboardPath);
+        return;
+      }
+
+      if (expectedPath !== dashboardPath) {
+        window.location.assign(dashboardPath);
+        return;
+      }
+
+      setIsResolved(true);
       setIsChecking(false);
     };
 
     void verify();
   }, []);
 
-  if (isChecking || !isApproved) {
+  if (isChecking || !isResolved) {
     return <p className="text-lg text-[#2b5876]">{checkingLabel}</p>;
   }
 
-  return (
-    <div className="space-y-4">
-      <h1 className="font-['Sora',Helvetica,Arial,sans-serif] text-4xl font-bold leading-tight">{title}</h1>
-      <p className="text-lg text-[#2b5876]">{subtitle}</p>
-    </div>
-  );
+  return <>{children}</>;
 }

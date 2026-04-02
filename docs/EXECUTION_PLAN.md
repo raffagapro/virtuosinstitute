@@ -94,11 +94,19 @@
 - [ ] Add route groups for authenticated app shell (`app/(app)/...`) while preserving static marketing routes
 - [ ] Add protected-route middleware strategy for companion routes
 - [ ] Add public guest calendar route (`app/(public)/tour-calendar`) with no-auth access and strict scope guard
-- [ ] Add dashboard route shells:
-  - `app/(app)/superadmin/**`
-  - `app/(app)/staff/**`
-  - `app/(app)/parent/**`
-- [ ] Add role-to-dashboard resolver and post-login redirect policy
+- [x] Add dashboard route shells:
+  - `/platfrom/dashboard/superadmin`
+  - `/platfrom/dashboard/staff`
+  - `/platfrom/dashboard/parent`
+- [x] Add role-to-dashboard resolver and post-login redirect policy
+  - [x] Added `resolveDashboardPath` helper to route by `platform_role` + approved membership roles
+  - [x] Bootstrap API now returns `dashboardPath` for approved users
+  - [x] `/platfrom/dashboard` now acts as a resolver route and redirects to role-specific dashboards
+  - [x] Added shared dashboard shell + navbar baseline for role dashboards with static-site visual style and top-right signout action
+  - [x] Added shared static-site footer to dashboard shells (superadmin/staff/parent)
+  - [x] Updated dashboard navbar logo to return to static home page and tuned dashboard footer to compact spacing
+  - [x] Added superadmin sidebar navigation baseline with page links (`/platfrom/dashboard/superadmin` home and `/platfrom/dashboard/superadmin/users`)
+  - [x] Added secure superadmin users-directory API and initial table view for all users
 
 ### Data & Auth Setup
 - [x] Create initial schema migration (schools, profiles, school_memberships, parent_profiles, staff_profiles, identity_documents, parent_approval_requests, students, student_guardians, student_documents, student_pickup_contacts, student_pickup_authorizations, student_pickup_audit_logs, academic_classes, teacher_class_assignments, student_tuition_accounts, tuition_periods, tuition_quotes, payment_records, threads, thread_participants, messages, announcements, notification_campaigns, notification_deliveries, media_assets, calendars, calendar_events, availability_rules, appointment_slots, appointments, appointment_notes, guest_tour_requests)

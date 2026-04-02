@@ -9,21 +9,22 @@ import { appFooterStyles as s } from "./AppFooter.styles";
 interface AppFooterProps {
   locale?: Locale;
   onLocaleChange?: (locale: Locale) => void;
+  compact?: boolean;
 }
 
 const localeOptions: Locale[] = ["es-MX", "en-US"];
 
-export function AppFooter({ locale = "es-MX", onLocaleChange }: AppFooterProps) {
+export function AppFooter({ locale = "es-MX", onLocaleChange, compact = false }: AppFooterProps) {
   const t = (key: Parameters<typeof translate>[1]) => translate(locale, key);
   const [addressLine1, ...addressRest] = t("leadForm.address").split(", ");
   const addressLine2 = addressRest.join(", ");
 
   return (
-    <footer className={s.footer}>
-      <div className={s.grid}>
+    <footer className={cn(s.footer, compact && s.footerCompact, "mt-auto")}>
+      <div className={cn(s.grid, compact && s.gridCompact)}>
         <AppContactInfoGroup
           title={t("leadForm.phoneLabel")}
-          className={s.leftCol}
+          className={cn(s.leftCol, compact && s.leftColCompact)}
           titleClassName={s.label}
         >
           <a
@@ -32,7 +33,7 @@ export function AppFooter({ locale = "es-MX", onLocaleChange }: AppFooterProps) 
           >
             {t("contacto.phone")}
           </a>
-          <p className={s.address}>
+          <p className={cn(s.address, compact && s.addressCompact)}>
             {addressLine1},
             <br />
             {addressLine2}
@@ -41,7 +42,7 @@ export function AppFooter({ locale = "es-MX", onLocaleChange }: AppFooterProps) 
 
         <AppContactInfoGroup
           title={t("leadForm.emailLabel")}
-          className={s.middleCol}
+          className={cn(s.middleCol, compact && s.middleColCompact)}
           titleClassName={s.label}
         >
           <a
@@ -50,8 +51,11 @@ export function AppFooter({ locale = "es-MX", onLocaleChange }: AppFooterProps) 
           >
             {t("contacto.email")}
           </a>
-          <div className={s.socialRow}>
-            <AppSocialLinks wrapperClassName={s.socialWrapper} linkClassName={s.socialLink} />
+          <div className={cn(s.socialRow, compact && s.socialRowCompact)}>
+            <AppSocialLinks
+              wrapperClassName={cn(s.socialWrapper, compact && s.socialWrapperCompact)}
+              linkClassName={s.socialLink}
+            />
             <div className={s.localeSwitcher} role="group" aria-label={t("footer.languageSwitcherAria")}>
               {localeOptions.map((localeOption) => {
                 const isActive = localeOption === locale;
@@ -75,13 +79,13 @@ export function AppFooter({ locale = "es-MX", onLocaleChange }: AppFooterProps) 
           </div>
         </AppContactInfoGroup>
 
-        <div className={s.logoCol}>
+        <div className={cn(s.logoCol, compact && s.logoColCompact)}>
           <Image
             src="https://virtuosinstitute.com.mx/wp-content/uploads/2025/01/Recurso-1virtuos-logo.png"
             alt={t("footer.tagline")}
             width={220}
             height={209}
-            className={s.logoImg}
+            className={cn(s.logoImg, compact && s.logoImgCompact)}
             unoptimized
           />
         </div>

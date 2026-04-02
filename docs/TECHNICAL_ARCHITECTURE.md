@@ -5,12 +5,12 @@
 Virtuós Institute is a Next.js App Router application with two distinct product surfaces sharing a single codebase:
 
 1. **Marketing site** — Static, pixel-faithful recreation of virtuosinstitute.com.mx. No auth required.
-2. **Companion app** — Parent ↔ school staff communication platform. Auth required. (Phase 3 — TBD)
+2. **Companion app** — Parent ↔ school staff communication platform. Auth required. (Phase 3+)
 
 Core runtime principles:
 
 - The marketing site is fully statically exportable (`output: 'export'`). No server runtime needed for Phase 1.
-- The companion app will introduce Supabase as the backend (auth, database, storage).
+- The companion app uses Supabase as backend (auth, database, storage).
 - All user-facing copy goes through the i18n layer — no hardcoded strings in components.
 - `components/ui/*` is the single source of truth for primitive UI building blocks.
 
@@ -84,13 +84,13 @@ Lead form submission (Phase 1):
 
 ---
 
-## Data Flow (Phase 3 — Companion App, TBD)
+## Data Flow (Phase 3+ — Companion App)
 
 ```
 Browser request
-  → Next.js server/client pages
+  → Next.js authenticated route group (`app/(app)/**`)
   → Supabase Auth (session)
-  → Supabase Database (RLS-protected queries)
+  → Supabase Database (RLS-protected queries for profiles/students/threads/messages/announcements)
   → Supabase Storage (file assets)
 ```
 
@@ -353,7 +353,7 @@ Body base: `14px`, line-height `1.7em`, `-webkit-font-smoothing: antialiased`.
 | Styling | Tailwind v4 | Utility-first, consistent with design tokens |
 | UI primitives | Hand-rolled (alchemist architecture) | Full ownership, no shadcn dependency |
 | i18n | Custom (LocaleProvider + translate()) | Type-safe, simple, no external lib |
-| Auth (Phase 3) | Supabase Auth | Matches storage + DB platform |
+| Auth (Phase 3+) | Supabase Auth | Matches storage + DB platform |
 | Asset hosting (dev) | `/public` folder | Zero config |
 | Asset hosting (prod) | Supabase Storage | Single platform with companion app |
 | Deployment | Vercel or AWS (decide at MVP) | Both compatible with Next.js static export |

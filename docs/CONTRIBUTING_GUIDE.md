@@ -17,6 +17,10 @@
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
+   Optional auth-provider feature flags:
+   - `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED` (default `true`)
+   - `NEXT_PUBLIC_AUTH_EMAIL_ENABLED` (default `false`)
+   - `AUTH_ENABLE_EMAIL_LOGIN` (server override for email auth)
    Parent onboarding notification emails additionally require:
    - `BREVO_API_KEY`
    - `INVITE_EMAIL_FROM`
@@ -39,6 +43,7 @@
 | `npm run dev` | Start dev server (hot reload) |
 | `npm run build` | Production build |
 | `npm run start` | Serve production build locally |
+| `NEXT_STATIC_EXPORT=true npm run build` | Optional marketing-only static export build (disables runtime API routes) |
 | `npm run lint` | Run ESLint |
 | `npm test` | Run unit tests (jest) |
 | `npm run test:watch` | Run tests in watch mode |

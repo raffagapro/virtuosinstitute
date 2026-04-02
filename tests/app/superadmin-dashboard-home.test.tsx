@@ -9,5 +9,6 @@ describe("SuperadminDashboardHomePage", () => {
     expect(screen.getByText("Directorio de usuarios")).toBeInTheDocument();
     expect(screen.getByText("Aprobaciones")).toBeInTheDocument();
     expect(screen.getByText("Configuracion de plataforma")).toBeInTheDocument();
+    expect(screen.getByText("Herramientas de desarrollo")).toBeInTheDocument();
   });
 });

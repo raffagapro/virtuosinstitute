@@ -113,20 +113,50 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "service-role-missing" }, { status: 503 });
   }
 
-  const { error: upsertProfileError } = await adminSupabase
+  const { data: existingProfileRow, error: existingProfileReadError } = await adminSupabase
     .from("profiles")
-    .upsert(
-      {
+    .select("id, email, preferred_locale")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (existingProfileReadError) {
+    return NextResponse.json({ ok: false, reason: "profile-read-failed" }, { status: 500 });
+  }
+
+  if (!existingProfileRow) {
+    const { error: createProfileError } = await adminSupabase
+      .from("profiles")
+      .insert({
         id: user.id,
         full_name: fullName,
         email,
         preferred_locale: "es-MX",
-      },
-      { onConflict: "id" }
-    );
+      });
 
-  if (upsertProfileError) {
-    return NextResponse.json({ ok: false, reason: "profile-upsert-failed" }, { status: 500 });
+    if (createProfileError) {
+      return NextResponse.json({ ok: false, reason: "profile-upsert-failed" }, { status: 500 });
+    }
+  } else {
+    const profileUpdates: Record<string, unknown> = {};
+
+    if (!existingProfileRow.email && email) {
+      profileUpdates.email = email;
+    }
+
+    if (!existingProfileRow.preferred_locale) {
+      profileUpdates.preferred_locale = "es-MX";
+    }
+
+    if (Object.keys(profileUpdates).length > 0) {
+      const { error: updateProfileError } = await adminSupabase
+        .from("profiles")
+        .update(profileUpdates)
+        .eq("id", user.id);
+
+      if (updateProfileError) {
+        return NextResponse.json({ ok: false, reason: "profile-upsert-failed" }, { status: 500 });
+      }
+    }
   }
 
   const { data: profileRow, error: profileReadError } = await adminSupabase
@@ -139,11 +169,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "profile-read-failed" }, { status: 500 });
   }
 
+  const { data: roleRows, error: roleReadError } = await adminSupabase
+    .from("school_memberships")
+    .select("school_role")
+    .eq("profile_id", user.id)
+    .eq("is_active", true)
+    .eq("approval_status", "approved");
+
+  if (roleReadError) {
+    return NextResponse.json({ ok: false, reason: "role-read-failed" }, { status: 500 });
+  }
+
+  const platformRole = ((profileRow as { platform_role: string | null } | null)?.platform_role ?? null);
+  const schoolRoles = ((roleRows as MembershipRoleRow[] | null) ?? []).map((row) => row.school_role);
+
+  const hasElevatedAccess = platformRole === "superadmin" || schoolRoles.length > 0;
+
   const { data: existingMembershipRows, error: membershipReadError } = await adminSupabase
     .from("school_memberships")
     .select("id, approval_status")
     .eq("profile_id", user.id)
-    .eq("school_role", "parent")
+    .eq("school_role", "guest")
     .order("created_at", { ascending: false })
     .limit(1);
 
@@ -153,12 +199,12 @@ export async function POST(request: Request) {
 
   let membership = ((existingMembershipRows as MembershipRow[] | null) ?? [])[0] ?? null;
 
-  if (!membership) {
+  if (!membership && !hasElevatedAccess) {
     const { error: insertMembershipError } = await adminSupabase
       .from("school_memberships")
       .insert({
         profile_id: user.id,
-        school_role: "parent",
+        school_role: "guest",
         is_active: true,
         approval_status: "pending",
       });
@@ -171,7 +217,7 @@ export async function POST(request: Request) {
       .from("school_memberships")
       .select("id, approval_status")
       .eq("profile_id", user.id)
-      .eq("school_role", "parent")
+      .eq("school_role", "guest")
       .order("created_at", { ascending: false })
       .limit(1);
 
@@ -180,10 +226,6 @@ export async function POST(request: Request) {
     }
 
     membership = ((createdMembershipRows as MembershipRow[] | null) ?? [])[0] ?? null;
-  }
-
-  if (!membership) {
-    return NextResponse.json({ ok: false, reason: "membership-missing" }, { status: 500 });
   }
 
   const { data: approvalRows, error: approvalReadError } = await adminSupabase
@@ -200,7 +242,7 @@ export async function POST(request: Request) {
   let approval = ((approvalRows as ParentApprovalRow[] | null) ?? [])[0] ?? null;
   let didCreateApprovalRequest = false;
 
-  if (!approval) {
+  if (!approval && !hasElevatedAccess) {
     const { error: insertApprovalError } = await adminSupabase
       .from("parent_approval_requests")
       .insert({
@@ -227,24 +269,12 @@ export async function POST(request: Request) {
     approval = ((createdApprovalRows as ParentApprovalRow[] | null) ?? [])[0] ?? null;
   }
 
-  const status = deriveParentApprovalStatus({
-    membershipStatus: membership.approval_status,
-    requestStatus: approval?.status ?? null,
-  });
-
-  const { data: roleRows, error: roleReadError } = await adminSupabase
-    .from("school_memberships")
-    .select("school_role")
-    .eq("profile_id", user.id)
-    .eq("is_active", true)
-    .eq("approval_status", "approved");
-
-  if (roleReadError) {
-    return NextResponse.json({ ok: false, reason: "role-read-failed" }, { status: 500 });
-  }
-
-  const platformRole = ((profileRow as { platform_role: string | null } | null)?.platform_role ?? null);
-  const schoolRoles = ((roleRows as MembershipRoleRow[] | null) ?? []).map((row) => row.school_role);
+  const status = hasElevatedAccess
+    ? "approved"
+    : deriveParentApprovalStatus({
+      membershipStatus: membership?.approval_status ?? null,
+      requestStatus: approval?.status ?? null,
+    });
   const dashboardPath = resolveDashboardPath({
     platformRole,
     schoolRoles,
@@ -262,7 +292,7 @@ export async function POST(request: Request) {
   if (status === "rejected") {
     // Rejected parent accounts are fully removed from app data and auth.
     await adminSupabase.from("parent_approval_requests").delete().eq("profile_id", user.id);
-    await adminSupabase.from("school_memberships").delete().eq("profile_id", user.id).eq("school_role", "parent");
+    await adminSupabase.from("school_memberships").delete().eq("profile_id", user.id).in("school_role", ["guest", "parent"]);
     await adminSupabase.from("profiles").delete().eq("id", user.id);
     await adminSupabase.auth.admin.deleteUser(user.id);
 

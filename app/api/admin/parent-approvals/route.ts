@@ -9,11 +9,17 @@ interface ParentApprovalPayload {
   profileId: string;
   schoolId?: string;
   status: Exclude<ApprovalStatus, "pending">;
+  assignedRole?: "school_owner" | "direction" | "coordination" | "teacher" | "clerk" | "parent" | "student" | "guest";
   notes?: string;
 }
 
 interface ParentApprovalRow {
   id: string;
+}
+
+interface MembershipUpdateRow {
+  id: string;
+  school_role: string;
 }
 
 function getBearerToken(request: Request): string | null {
@@ -83,6 +89,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "invalid-input" }, { status: 400 });
   }
 
+  if (payload.status === "approved" && !payload.assignedRole) {
+    return NextResponse.json({ ok: false, reason: "invalid-input" }, { status: 400 });
+  }
+
   let adminSupabase: any;
   try {
     adminSupabase = getSupabaseAdminClient() as any;
@@ -110,14 +120,61 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "target-profile-read-failed" }, { status: 500 });
   }
 
-  const { error: membershipUpdateError } = await adminSupabase
-    .from("school_memberships")
-    .update({ approval_status: payload.status, is_active: payload.status !== "suspended" })
-    .eq("profile_id", payload.profileId)
-    .eq("school_role", "parent");
+  if (payload.status === "approved") {
+    const { data: pendingMembershipRows, error: pendingMembershipReadError } = await adminSupabase
+      .from("school_memberships")
+      .select("id, school_role")
+      .eq("profile_id", payload.profileId)
+      .in("school_role", ["guest", "parent"])
+      .order("created_at", { ascending: false })
+      .limit(1);
 
-  if (membershipUpdateError) {
-    return NextResponse.json({ ok: false, reason: "membership-update-failed" }, { status: 500 });
+    if (pendingMembershipReadError) {
+      return NextResponse.json({ ok: false, reason: "membership-read-failed" }, { status: 500 });
+    }
+
+    const pendingMembership = ((pendingMembershipRows as MembershipUpdateRow[] | null) ?? [])[0] ?? null;
+
+    if (pendingMembership) {
+      const { error: membershipUpdateError } = await adminSupabase
+        .from("school_memberships")
+        .update({
+          school_role: payload.assignedRole,
+          approval_status: "approved",
+          is_active: true,
+        })
+        .eq("id", pendingMembership.id);
+
+      if (membershipUpdateError) {
+        return NextResponse.json({ ok: false, reason: "membership-update-failed" }, { status: 500 });
+      }
+    } else {
+      const { error: membershipInsertError } = await adminSupabase
+        .from("school_memberships")
+        .upsert(
+          {
+            profile_id: payload.profileId,
+            school_role: payload.assignedRole,
+            approval_status: "approved",
+            is_active: true,
+          },
+          { onConflict: "profile_id,school_role" }
+        );
+
+      if (membershipInsertError) {
+        return NextResponse.json({ ok: false, reason: "membership-update-failed" }, { status: 500 });
+      }
+    }
+  } else {
+    const { error: membershipUpdateError } = await adminSupabase
+      .from("school_memberships")
+      .update({ approval_status: payload.status, is_active: false })
+      .eq("profile_id", payload.profileId)
+      .in("school_role", ["guest", "parent"]);
+
+    if (membershipUpdateError) {
+      return NextResponse.json({ ok: false, reason: "membership-update-failed" }, { status: 500 });
+    }
   }
 
   const { data: existingRows, error: approvalReadError } = await adminSupabase

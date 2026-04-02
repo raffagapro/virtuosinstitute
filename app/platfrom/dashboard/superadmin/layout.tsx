@@ -1,7 +1,7 @@
 import { type ReactNode } from "react";
 import { PlatformDashboardGate } from "@/app/platfrom/dashboard/PlatformDashboardGate";
 import { AppFooter } from "@/components/layout";
-import { AppDashboardNavbar, AppDashboardSidebar } from "@/components/ui";
+import { AppDashboardNavbar, AppDashboardSidebar, AppPageLoader } from "@/components/ui";
 import { defaultLocale, translate } from "@/lib/i18n";
 
 interface SuperadminDashboardLayoutProps {
@@ -12,10 +12,7 @@ export default function SuperadminDashboardLayout({ children }: SuperadminDashbo
   const locale = defaultLocale;
 
   return (
-    <PlatformDashboardGate
-      checkingLabel={translate(locale, "platform.entry.checking")}
-      expectedPath="/platfrom/dashboard/superadmin"
-    >
+    <PlatformDashboardGate expectedPath="/platfrom/dashboard/superadmin">
       <div className="min-h-screen bg-[#f5fbff] text-[#003F60] flex flex-col">
         <main className="flex-1 px-6 py-12 pt-[94px] pb-40">
           <AppDashboardNavbar
@@ -32,6 +29,7 @@ export default function SuperadminDashboardLayout({ children }: SuperadminDashbo
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 md:flex-row">
             <AppDashboardSidebar
               ariaLabel={translate(locale, "platform.dashboard.sidebar.pages")}
+              pendingUsersBadgeLabel={translate(locale, "platform.dashboard.superadmin.sidebar.pendingBadge")}
               items={[
                 {
                   href: "/platfrom/dashboard/superadmin",
@@ -40,6 +38,15 @@ export default function SuperadminDashboardLayout({ children }: SuperadminDashbo
                 {
                   href: "/platfrom/dashboard/superadmin/users",
                   label: translate(locale, "platform.dashboard.superadmin.sidebar.users"),
+                  showPendingAuthBadge: true,
+                },
+                {
+                  href: "/platfrom/dashboard/superadmin/profile",
+                  label: translate(locale, "platform.dashboard.superadmin.sidebar.profile"),
+                },
+                {
+                  href: "/platfrom/dashboard/superadmin/dev",
+                  label: translate(locale, "platform.dashboard.superadmin.sidebar.dev"),
                 },
               ]}
             />

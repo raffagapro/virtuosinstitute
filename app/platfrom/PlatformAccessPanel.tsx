@@ -9,7 +9,16 @@ type AccessStatus = "signed_out" | "pending_review" | "approved" | "error" | "co
 interface PlatformAccessPanelProps {
   signInLabel: string;
   providerLabel: string;
+  emailProviderLabel: string;
+  emailLabel: string;
+  emailPlaceholder: string;
+  passwordLabel: string;
+  passwordPlaceholder: string;
+  emailSignInLabel: string;
+  emailSignInErrorLabel: string;
   signInErrorLabel: string;
+  noAuthProviderTitle: string;
+  noAuthProviderBody: string;
   checkingLabel: string;
   pendingTitle: string;
   pendingBody: string;
@@ -20,6 +29,8 @@ interface PlatformAccessPanelProps {
   accountRemovedTitle: string;
   accountRemovedBody: string;
   backHomeLabel: string;
+  googleAuthEnabled?: boolean;
+  emailAuthEnabled?: boolean;
   onApprovedRedirect?: (path: string) => void;
 }
 
@@ -61,7 +72,16 @@ function GoogleGlyph() {
 export function PlatformAccessPanel({
   signInLabel,
   providerLabel,
+  emailProviderLabel,
+  emailLabel,
+  emailPlaceholder,
+  passwordLabel,
+  passwordPlaceholder,
+  emailSignInLabel,
+  emailSignInErrorLabel,
   signInErrorLabel,
+  noAuthProviderTitle,
+  noAuthProviderBody,
   checkingLabel,
   pendingTitle,
   pendingBody,
@@ -72,14 +92,22 @@ export function PlatformAccessPanel({
   accountRemovedTitle,
   accountRemovedBody,
   backHomeLabel,
+  googleAuthEnabled = true,
+  emailAuthEnabled = false,
   onApprovedRedirect,
 }: PlatformAccessPanelProps) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [status, setStatus] = useState<AccessStatus>("signed_out");
   const [isLoading, setIsLoading] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [isEmailSigningIn, setIsEmailSigningIn] = useState(false);
   const [hasSignInError, setHasSignInError] = useState(false);
+  const [hasEmailSignInError, setHasEmailSignInError] = useState(false);
+  const [emailValue, setEmailValue] = useState("");
+  const [passwordValue, setPasswordValue] = useState("");
   const [approvedDashboardPath, setApprovedDashboardPath] = useState("/platfrom/dashboard");
+
+  const hasAnyAuthProvider = googleAuthEnabled || emailAuthEnabled;
 
   const renderGoogleSignInAction = () => (
     <AppButton
@@ -92,6 +120,46 @@ export function PlatformAccessPanel({
       <GoogleGlyph />
       <span>{providerLabel}</span>
     </AppButton>
+  );
+
+  const renderEmailSignInForm = () => (
+    <form
+      className="w-full max-w-lg space-y-3 rounded-2xl border border-[#77b5d9] bg-white/70 p-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onEmailSignIn();
+      }}
+    >
+      <p className="text-sm font-semibold text-[#1f4c68]">{emailProviderLabel}</p>
+      <label className="block space-y-2">
+        <span className="text-sm text-[#1f4c68]">{emailLabel}</span>
+        <input
+          type="email"
+          className="w-full rounded-xl border border-[#77b5d9] px-4 py-3 text-[#003F60]"
+          placeholder={emailPlaceholder}
+          value={emailValue}
+          onChange={(event) => setEmailValue(event.target.value)}
+          autoComplete="email"
+          required
+        />
+      </label>
+      <label className="block space-y-2">
+        <span className="text-sm text-[#1f4c68]">{passwordLabel}</span>
+        <input
+          type="password"
+          className="w-full rounded-xl border border-[#77b5d9] px-4 py-3 text-[#003F60]"
+          placeholder={passwordPlaceholder}
+          value={passwordValue}
+          onChange={(event) => setPasswordValue(event.target.value)}
+          autoComplete="current-password"
+          required
+        />
+      </label>
+      <AppButton type="submit" className="text-base px-8 py-3" disabled={isEmailSigningIn}>
+        {emailSignInLabel}
+      </AppButton>
+      {hasEmailSignInError ? <p className="text-sm text-[#b51d3a]">{emailSignInErrorLabel}</p> : null}
+    </form>
   );
 
   const signOutWithoutError = async () => {
@@ -109,7 +177,7 @@ export function PlatformAccessPanel({
     } = await supabase.auth.getSession();
 
     if (!session?.access_token) {
-      setStatus("signed_out");
+      setStatus(hasAnyAuthProvider ? "signed_out" : "config_error");
       setIsLoading(false);
       return;
     }
@@ -179,6 +247,10 @@ export function PlatformAccessPanel({
   }, [approvedDashboardPath, onApprovedRedirect, status]);
 
   const onGoogleSignIn = async () => {
+    if (!googleAuthEnabled) {
+      return;
+    }
+
     setIsSigningIn(true);
     setHasSignInError(false);
 
@@ -197,6 +269,30 @@ export function PlatformAccessPanel({
     }
   };
 
+  const onEmailSignIn = async () => {
+    if (!emailAuthEnabled) {
+      return;
+    }
+
+    setIsEmailSigningIn(true);
+    setHasEmailSignInError(false);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: emailValue.trim(),
+      password: passwordValue,
+    });
+
+    if (error) {
+      setHasEmailSignInError(true);
+      setStatus("error");
+      setIsEmailSigningIn(false);
+      return;
+    }
+
+    setIsEmailSigningIn(false);
+    await refreshStatus();
+  };
+
   if (isLoading) {
     return <p className="text-base text-[#2b5876]">{checkingLabel}</p>;
   }
@@ -204,7 +300,8 @@ export function PlatformAccessPanel({
   if (status === "signed_out") {
     return (
       <div className="flex flex-col items-start gap-3">
-        {renderGoogleSignInAction()}
+        {googleAuthEnabled ? renderGoogleSignInAction() : null}
+        {emailAuthEnabled ? renderEmailSignInForm() : null}
         {hasSignInError ? <p className="text-sm text-[#b51d3a]">{signInErrorLabel}</p> : null}
       </div>
     );
@@ -220,11 +317,12 @@ export function PlatformAccessPanel({
         <h2 className="font-['Sora',Helvetica,Arial,sans-serif] text-2xl font-bold text-[#003F60]">{pendingTitle}</h2>
         <p className="text-[#2b5876]">{pendingBody}</p>
         <div className="flex flex-wrap gap-3">
-          {renderGoogleSignInAction()}
+          {googleAuthEnabled ? renderGoogleSignInAction() : null}
           <AppButton as="a" href="/" className="text-base px-8 py-3">
             {backHomeLabel}
           </AppButton>
         </div>
+        {emailAuthEnabled ? renderEmailSignInForm() : null}
         {hasSignInError ? <p className="text-sm text-[#b51d3a]">{signInErrorLabel}</p> : null}
       </div>
     );
@@ -233,8 +331,8 @@ export function PlatformAccessPanel({
   if (status === "config_error") {
     return (
       <div className="space-y-4 rounded-2xl border border-[#77b5d9] bg-white/70 p-6">
-        <h2 className="font-['Sora',Helvetica,Arial,sans-serif] text-2xl font-bold text-[#003F60]">{configErrorTitle}</h2>
-        <p className="text-[#2b5876]">{configErrorBody}</p>
+      <h2 className="font-['Sora',Helvetica,Arial,sans-serif] text-2xl font-bold text-[#003F60]">{hasAnyAuthProvider ? configErrorTitle : noAuthProviderTitle}</h2>
+        <p className="text-[#2b5876]">{hasAnyAuthProvider ? configErrorBody : noAuthProviderBody}</p>
         <div className="flex flex-wrap gap-3">
           <AppButton as="a" href="/" className="text-base px-8 py-3">
             {backHomeLabel}
@@ -263,11 +361,12 @@ export function PlatformAccessPanel({
       <h2 className="font-['Sora',Helvetica,Arial,sans-serif] text-2xl font-bold text-[#7e1d2f]">{signInErrorLabel}</h2>
       <p className="text-[#7e1d2f]">{configErrorBody}</p>
       <div className="flex flex-wrap gap-3">
-        {renderGoogleSignInAction()}
+        {googleAuthEnabled ? renderGoogleSignInAction() : null}
         <AppButton as="a" href="/" className="text-base px-8 py-3">
           {backHomeLabel}
         </AppButton>
       </div>
+      {emailAuthEnabled ? renderEmailSignInForm() : null}
       {hasSignInError ? <p className="text-sm text-[#b51d3a]">{signInErrorLabel}</p> : null}
     </div>
   );

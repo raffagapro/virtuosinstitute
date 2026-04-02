@@ -82,12 +82,13 @@
 ### Technical Setup
 - [x] Add Supabase project configuration and env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
 - [ ] Configure Supabase Auth provider for Google OAuth sign-in flow
+- [x] Add feature-flagged email/password auth path for QA and future optional rollout
 - [~] Add app-managed mailer boundary following alchemist-style architecture (`lib/invite-mailer.ts` + template builders)
   - [x] Brevo provider boundary via `lib/invite-mailer.ts`
   - [x] Localized onboarding email templates for parent review and approval notifications
   - [x] Parent receives email when account is created and enters review
   - [x] Parent receives email when staff approves access
-  - [ ] Add password recovery and signup-confirmation app-managed emails
+  - [x] Add password recovery and signup-confirmation app-managed emails
 - [ ] Configure Supabase Storage private buckets (`identity-documents`, `student-files`, `notification-media`)
 - [ ] Define deterministic storage path conventions by entity and file kind
 - [x] Add typed Supabase browser/server clients in `lib/supabase/`
@@ -107,6 +108,9 @@
   - [x] Updated dashboard navbar logo to return to static home page and tuned dashboard footer to compact spacing
   - [x] Added superadmin sidebar navigation baseline with page links (`/platfrom/dashboard/superadmin` home and `/platfrom/dashboard/superadmin/users`)
   - [x] Added secure superadmin users-directory API and initial table view for all users
+  - [x] Added users-directory controls: name/email search, active/inactive filters, role filter, and ordering options
+  - [x] Added pending-authorization priority ordering in users-directory table rows
+  - [x] Added sidebar notification badge with pending users-to-authorize count
 
 ### Data & Auth Setup
 - [x] Create initial schema migration (schools, profiles, school_memberships, parent_profiles, staff_profiles, identity_documents, parent_approval_requests, students, student_guardians, student_documents, student_pickup_contacts, student_pickup_authorizations, student_pickup_audit_logs, academic_classes, teacher_class_assignments, student_tuition_accounts, tuition_periods, tuition_quotes, payment_records, threads, thread_participants, messages, announcements, notification_campaigns, notification_deliveries, media_assets, calendars, calendar_events, availability_rules, appointment_slots, appointments, appointment_notes, guest_tour_requests)
@@ -137,6 +141,14 @@
   - [x] Added `npm run db:push` aliases for linked/local migration pushes
   - [x] Completed runtime reference sweep in `app/**`, `lib/**`, and `tests/**` for `school_id` / school-scope helper usage
 - [ ] Add required-field validation by role (parent, student, coordination/direction/owner, teacher)
+- [x] Add required-field schema fields by role (migration 014)
+  - [x] Added `date_of_birth` to `parent_profiles`
+  - [x] Added `date_of_birth`, `data_authorization_signed_at`, `data_authorization_signed_by_profile_id` to `students`
+  - [x] Added `grade_of_interest` to `guest_tour_requests`
+  - [x] Added `date_of_birth` field to parent profile form and API
+- [x] Added shared profile birth-date field (migration 015)
+  - [x] Added `date_of_birth` to `profiles` so parent/staff/superadmin can edit it
+- [ ] Add required-field completeness validation and checklist UI by role (parent, student, coordination/direction/owner, teacher)
 - [ ] Add seed data for local development and QA
 
 ### DX & Quality Setup
@@ -169,9 +181,14 @@
 - [ ] Guest/clerk tour-info appointment flow with approval email delivery
 
 ### Profile
-- [ ] Parent profile page (contact info + preferred language)
+- [x] Parent profile page (contact info + preferred language)
+  - [x] Added GET/PATCH `/api/user/profile` endpoints for profile fetching and updating
+  - [x] Added `UserProfileForm` component with edit/view modes and parent-specific fields
+  - [x] Implemented profile pages for parent, staff, and superadmin dashboards
+  - [x] Added i18n keys for profile form labels (fullName, email, phone, language, curp, rfc, profession, invoiceRequired, edit, save, cancel, etc.)
+  - [x] Parent can view and edit: full name, phone, language, CURP, RFC, profession, invoice requirement
+  - [x] Staff and superadmin can view and edit: full name, phone, language (no parent-specific fields)
 - [ ] Child onboarding and child-profile editing flow for approved parents
-- [ ] Parent billing and identity details (`CURP`, `RFC`, profession, invoice preference)
 - [ ] Parent upload flow for INE/passport and student-related authorization documents
 - [ ] Authorized pickup-person management with add/remove controls and consent capture
 
@@ -185,7 +202,9 @@
 ## Phase 5 — Companion App MVP (Operations)
 
 ### Superadmin Platform Dashboard
-- [ ] Global user directory with id, role, school, status, and search filters
+- [~] Global user directory with id, role, status, and search/filter controls (single-school scope)
+  - [x] Added pending-status authorization modal from users directory with role assignment and approve action
+- [x] Add superadmin Dev tab for seeded email-account creation in QA environments
 - [ ] Activate/deactivate users and inspect role assignments
 - [ ] Platform usage metrics and storage/database usage visibility
 - [ ] Mailer template management for editing and creating email templates

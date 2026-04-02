@@ -1,0 +1,64 @@
+{
+  "migrations": {
+    "001_foundations.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: extensions, app schema, shared helper functions"
+    },
+    "002_identity_and_schools.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: identity/school tables, constraints, indexes, role helper functions"
+    },
+    "003_students_and_relationships.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: students, guardians, pickup auth/audit, classes, teacher assignments"
+    },
+    "004_storage_metadata.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: identity_documents, student_documents, media_assets, storage FK links"
+    },
+    "005_notifications.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: announcements, notification campaigns, per-recipient deliveries"
+    },
+    "006_calendars_and_appointments.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: calendars, events, availability, slots, guest tour, appointments, notes"
+    },
+    "007_messaging.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: threads, participants, messages, participant helper"
+    },
+    "008_tuition_and_payments.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: tuition accounts, periods, quotes, payments"
+    },
+    "009_indexes_and_triggers.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: high-signal indexes, thread touch helper, audit immutability"
+    },
+    "010_rls_policies.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Implemented: baseline RLS helpers and policies for core domain tables"
+    }
+  }
+}

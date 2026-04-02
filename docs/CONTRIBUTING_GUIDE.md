@@ -89,6 +89,19 @@ Keep `docs/` in sync as you work:
 
 ---
 
+## Supabase Migration Workflow
+
+- Baseline project setup files must exist: `supabase/config.toml` and `supabase/seed.sql`.
+- Check migration state with `npm run supabase:migrations:status`.
+- Before any push, run:
+   - `npm run supabase:migrations -- check-push --env=local`
+   - `npm run supabase:migrations -- check-push --env=linked`
+- Push with guarded commands:
+   - `npm run supabase:db:push:local`
+   - `npm run supabase:db:push:linked`
+
+---
+
 ## Code Guidelines
 
 - TypeScript strict mode — no `any` unless unavoidable.

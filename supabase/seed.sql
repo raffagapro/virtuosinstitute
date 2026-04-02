@@ -1,0 +1,2 @@
+-- Seed data placeholder for local development.
+-- Keep empty until initial MVP fixtures are defined.

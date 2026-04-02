@@ -10,7 +10,14 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "supabase:migrations": "node scripts/manage-supabase-migrations.mjs",
+    "supabase:migrations:status": "node scripts/manage-supabase-migrations.mjs status",
+    "supabase:migrations:sync": "node scripts/manage-supabase-migrations.mjs sync",
+    "supabase:db:push:local": "node scripts/manage-supabase-migrations.mjs push --env=local",
+    "supabase:db:push:local:dry-run": "node scripts/manage-supabase-migrations.mjs push --env=local --dry-run",
+    "supabase:db:push:linked": "node scripts/manage-supabase-migrations.mjs push --env=linked",
+    "supabase:db:push:linked:dry-run": "node scripts/manage-supabase-migrations.mjs push --env=linked --dry-run"
   },
   "dependencies": {
     "clsx": "^2.1.1",

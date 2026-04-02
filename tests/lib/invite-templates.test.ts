@@ -1,5 +1,7 @@
 import { buildParentApprovedEmail } from "@/lib/invite-templates/parent-approved";
 import { buildParentReviewEmail } from "@/lib/invite-templates/parent-review";
+import { buildPasswordResetEmail } from "@/lib/invite-templates/password-reset";
+import { buildSignupConfirmationEmail } from "@/lib/invite-templates/signup-confirmation";
 
 describe("buildParentReviewEmail", () => {
   it("builds localized English review email content", () => {
@@ -48,5 +50,31 @@ describe("buildParentApprovedEmail", () => {
 
     expect(result.subject).toBe("Tu cuenta de Virtuós fue aprobada");
     expect(result.text).toContain("Hola Padre, tu cuenta ha sido aprobada.");
+  });
+});
+
+describe("auth email templates", () => {
+  it("builds localized password reset content", () => {
+    const result = buildPasswordResetEmail({
+      locale: "en-US",
+      fullName: "Parent Name",
+      resetUrl: "https://virtuos.example/auth/callback?token_hash=test&type=recovery",
+    });
+
+    expect(result.subject).toBe("Reset your Virtuós password");
+    expect(result.text).toContain("Hello Parent Name, we received a request to reset your password.");
+    expect(result.text).toContain("type=recovery");
+  });
+
+  it("builds localized signup confirmation content", () => {
+    const result = buildSignupConfirmationEmail({
+      locale: "es-MX",
+      fullName: "Padre",
+      confirmationUrl: "https://virtuos.example/auth/callback?token_hash=test&type=signup",
+    });
+
+    expect(result.subject).toBe("Confirma tu cuenta de Virtuós");
+    expect(result.text).toContain("Hola Padre, confirma tu correo para activar tu acceso a Virtuós.");
+    expect(result.text).toContain("type=signup");
   });
 });

@@ -8,3 +8,5 @@ export { AppDashboardShell } from "./AppDashboardShell";
 export { AppDashboardCard } from "./AppDashboardCard";
 export { AppDashboardNavbar } from "./AppDashboardNavbar";
 export { AppDashboardSidebar } from "./AppDashboardSidebar";
+export { AppPageLoader } from "./AppPageLoader";
+export { UserProfileForm } from "./UserProfileForm";

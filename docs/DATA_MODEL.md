@@ -65,6 +65,7 @@ User profile mapped to Supabase auth users.
 | `email` | `text` nullable | Mirror of auth email for querying/reporting |
 | `platform_role` | `text` nullable | `superadmin` or `null` |
 | `phone` | `text` nullable | Optional contact field |
+| `date_of_birth` | `date` nullable | Shared birth date editable by authenticated roles |
 | `preferred_locale` | `text` | `es-MX` or `en-US` |
 | `created_at` | `timestamptz` | Default `now()` |
 | `updated_at` | `timestamptz` | Updated by trigger |
@@ -80,6 +81,7 @@ Parent-only fields layered on top of the shared profile table.
 | `invoice_required` | `boolean` | Default `false` |
 | `profession` | `text` nullable | Parent profession |
 | `government_id_document_id` | `uuid` FK -> `identity_documents.id` nullable | INE/passport |
+| `date_of_birth` | `date` nullable | Parent date of birth |
 | `created_at` | `timestamptz` | Default `now()` |
 | `updated_at` | `timestamptz` | Updated by trigger |
 
@@ -150,6 +152,9 @@ Student records managed by parents/staff/admin. Students do not authenticate dir
 | `allergies` | `text` nullable | Medical notes |
 | `enrollment_date` | `date` nullable | Fecha de inscripcion |
 | `is_active` | `boolean` | Default `true` |
+| `date_of_birth` | `date` nullable | Student date of birth |
+| `data_authorization_signed_at` | `timestamptz` nullable | Timestamp of signed data-use authorization |
+| `data_authorization_signed_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Staff member who recorded the authorization |
 | `created_at` | `timestamptz` | Default `now()` |
 | `updated_at` | `timestamptz` | Updated by trigger |
 
@@ -506,6 +511,7 @@ Public (non-auth) tour/info requests submitted through the guest calendar flow.
 | `contact_phone` | `text` nullable | Optional contact channel |
 | `notes` | `text` nullable | Extra context |
 | `status` | `text` | `requested`, `confirmed`, `completed`, `canceled` |
+| `grade_of_interest` | `text` nullable | Grade level the prospect is interested in (e.g. `kinder`, `primaria-1`) |
 | `created_at` | `timestamptz` | Default `now()` |
 
 ### Access Rules (RLS Baseline)

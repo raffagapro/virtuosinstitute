@@ -29,21 +29,21 @@ This draft defines the first implementation baseline for the parent/staff compan
 	- `notification-media`
 - Database tables store file metadata, ownership, and permission-relevant references.
 - All buckets are private in MVP; access should be mediated by signed URLs after permission checks.
-- Storage paths should be deterministic and school-scoped.
+- Storage paths should be deterministic and entity-scoped.
 - Path convention examples:
-	- `identity-documents/school_{schoolId}/parents/{profileId}/{documentType}/{fileId}.{ext}`
-	- `identity-documents/school_{schoolId}/staff/{profileId}/{documentType}/{fileId}.{ext}`
-	- `identity-documents/school_{schoolId}/students/{studentId}/pickup/{pickupContactId}/{fileId}.{ext}`
-	- `student-files/school_{schoolId}/students/{studentId}/documents/{fileId}.{ext}`
-	- `student-files/school_{schoolId}/students/{studentId}/grades/{fileId}.pdf`
-	- `student-files/school_{schoolId}/students/{studentId}/evaluations/{fileId}.pdf`
-	- `notification-media/school_{schoolId}/campaigns/{campaignId}/{fileId}.{ext}`
+	- `identity-documents/parents/{profileId}/{documentType}/{fileId}.{ext}`
+	- `identity-documents/staff/{profileId}/{documentType}/{fileId}.{ext}`
+	- `identity-documents/students/{studentId}/pickup/{pickupContactId}/{fileId}.{ext}`
+	- `student-files/students/{studentId}/documents/{fileId}.{ext}`
+	- `student-files/students/{studentId}/grades/{fileId}.pdf`
+	- `student-files/students/{studentId}/evaluations/{fileId}.pdf`
+	- `notification-media/campaigns/{campaignId}/{fileId}.{ext}`
 
 ### Role Model
 
 - Platform role:
 	- `superadmin`
-- School and user roles:
+- Operational roles:
 	- `school_owner`
 	- `direction`
 	- `coordination`
@@ -54,18 +54,6 @@ This draft defines the first implementation baseline for the parent/staff compan
 	- `guest` (non-login calendar requester)
 
 ### Core Tables
-
-#### `schools`
-Top-level school entity.
-
-| Column | Type | Notes |
-|---|---|---|
-| `id` | `uuid` PK | School id |
-| `name` | `text` | School display name |
-| `slug` | `text` unique | Route-safe identifier |
-| `is_active` | `boolean` | Default `true` |
-| `created_at` | `timestamptz` | Default `now()` |
-| `updated_at` | `timestamptz` | Updated by trigger |
 
 #### `profiles`
 User profile mapped to Supabase auth users.
@@ -111,7 +99,6 @@ Metadata for identity-proof files attached to parents, staff, and authorized pic
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Document id |
-| `school_id` | `uuid` FK -> `schools.id` nullable | Nullable for platform-level records |
 | `storage_bucket` | `text` | Expected: `identity-documents` |
 | `document_type` | `text` | `ine`, `passport`, `pickup_id`, `signed_authorization` |
 | `storage_path` | `text` | Object storage path |
@@ -121,12 +108,11 @@ Metadata for identity-proof files attached to parents, staff, and authorized pic
 | `created_at` | `timestamptz` | Default `now()` |
 
 #### `school_memberships`
-Maps user profiles to schools with school-scoped role assignments.
+Maps user profiles to role assignments in global single-school mode.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Membership id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `profile_id` | `uuid` FK -> `profiles.id` | Required |
 | `school_role` | `text` | `school_owner`, `direction`, `coordination`, `teacher`, `clerk`, `parent`, `student`, `guest` |
 | `is_active` | `boolean` | Default `true` |
@@ -139,7 +125,6 @@ Tracks parent onboarding/approval review state and reviewer actions.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Request id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `profile_id` | `uuid` FK -> `profiles.id` | Parent profile |
 | `status` | `text` | `pending`, `approved`, `rejected`, `suspended` |
 | `reviewed_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Staff reviewer |
@@ -153,7 +138,6 @@ Student records managed by parents/staff/admin. Students do not authenticate dir
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Student id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `created_by_parent_profile_id` | `uuid` FK -> `profiles.id` nullable | Parent who submitted student registration |
 | `approval_status` | `text` | `pending`, `approved`, `rejected`, `archived` |
 | `approved_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Staff approver |
@@ -247,7 +231,6 @@ Class catalog used for student grouping and teacher assignments.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Class id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `name` | `text` | Example: `1A Primaria` |
 | `grade_level` | `text` | Normalized grade label |
 | `is_active` | `boolean` | Default `true` |
@@ -259,7 +242,6 @@ Teacher-to-class assignments.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Assignment id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `teacher_profile_id` | `uuid` FK -> `profiles.id` | Required |
 | `class_id` | `uuid` FK -> `academic_classes.id` | Required |
 | `subject_name` | `text` nullable | Optional subject dimension |
@@ -273,7 +255,6 @@ Conversation container for parent ↔ staff communication.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Thread id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `student_id` | `uuid` FK -> `students.id` nullable | Optional student context |
 | `subject` | `text` | Thread subject |
 | `status` | `text` | `open`, `closed` |
@@ -309,7 +290,6 @@ Broadcast communication from staff/admin.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Announcement id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `title` | `text` | Required |
 | `body` | `text` | Required |
 | `audience` | `text` | `school`, `grade`, `student-list` |
@@ -325,7 +305,6 @@ Staff-created notification campaigns that may deliver email and/or in-app conten
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Campaign id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `title` | `text` | Internal/admin title |
 | `subject` | `text` nullable | Email subject if applicable |
 | `body` | `text` | Campaign content |
@@ -355,7 +334,6 @@ Metadata for stored images/PDFs used by notifications, evaluations, and similar 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Asset id |
-| `school_id` | `uuid` FK -> `schools.id` nullable | Nullable for platform-level assets |
 | `storage_bucket` | `text` | Expected: `student-files` or `notification-media` |
 | `kind` | `text` | `banner_image`, `grade_pdf`, `evaluation_pdf`, `document_upload` |
 | `storage_path` | `text` | Object storage path |
@@ -370,7 +348,6 @@ Logical calendars/resources within the shared scheduling engine.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Calendar id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `calendar_type` | `text` | `school_events`, `clerk_appointments`, `coordination_appointments`, `direction_appointments`, `teacher_schedule` |
 | `title` | `text` | Display name |
 | `is_active` | `boolean` | Default `true` |
@@ -425,7 +402,6 @@ Booked appointments between family/guests and school departments.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Appointment id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `calendar_id` | `uuid` FK -> `calendars.id` | Required |
 | `slot_id` | `uuid` FK -> `appointment_slots.id` nullable | Optional if manually scheduled |
 | `requester_profile_id` | `uuid` FK -> `profiles.id` nullable | Parent/staff requester |
@@ -455,7 +431,6 @@ After MVP: keep out of the initial migration unless teacher scheduling is pulled
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Schedule block id |
-| `school_id` | `uuid` FK -> `schools.id` | Required |
 | `teacher_profile_id` | `uuid` FK -> `profiles.id` | Teacher |
 | `calendar_event_id` | `uuid` FK -> `calendar_events.id` nullable | Linked event if modeled on teacher calendar |
 | `starts_at` | `timestamptz` | Required |
@@ -525,7 +500,6 @@ Public (non-auth) tour/info requests submitted through the guest calendar flow.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Request id |
-| `school_id` | `uuid` FK -> `schools.id` | Target school |
 | `requested_datetime` | `timestamptz` | Requested tour/meeting time |
 | `parent_name` | `text` | Requester name |
 | `contact_email` | `text` | Contact channel |
@@ -536,13 +510,13 @@ Public (non-auth) tour/info requests submitted through the guest calendar flow.
 
 ### Access Rules (RLS Baseline)
 
-- Superadmin can bypass school scope for platform maintenance operations.
-- School members are always scoped to their active `school_memberships` records.
-- School owner has full control of school-side users, assignments, and content.
+- Superadmin has full platform maintenance operations.
+- Access is scoped by active role assignments and linked domain entities.
+- School owner has full control of operational users, assignments, and content.
 - Direction/coordination can manage operational and communication scopes defined by policy.
 - Teachers and clerks can read/write only within assigned student/class/work scopes.
 - Clerk user-directory access is directory-style and excludes privileged-role modification.
-- Coordination can manage teachers, students, and parents within school scope, but not school owner or superadmin roles.
+- Coordination can manage teachers, students, and parents, but not school owner or superadmin roles.
 - Parents can read only student links, threads, and messages where they are participants and linked guardians.
 - Parent-only PII (`CURP`, `RFC`, identity docs) is restricted to authorized staff roles plus the owning parent.
 - Students do not sign in; all student-related data visibility is mediated through approved parent accounts.
@@ -555,8 +529,7 @@ Public (non-auth) tour/info requests submitted through the guest calendar flow.
 ### Migration Notes
 
 - Add unique constraints:
-	- `schools(slug)`
-	- `school_memberships(school_id, profile_id, school_role)`
+	- `school_memberships(profile_id, school_role)`
 	- `parent_profiles(profile_id)`
 	- `staff_profiles(profile_id)`
 	- `student_guardians(student_id, guardian_profile_id)`
@@ -564,15 +537,15 @@ Public (non-auth) tour/info requests submitted through the guest calendar flow.
 	- `teacher_class_assignments(teacher_profile_id, class_id, subject_name)`
 	- `tuition_quotes(payment_reference)`
 - Add indexes:
-	- `school_memberships(school_id, school_role)`
-	- `students(school_id, curp)`
+	- `school_memberships(profile_id, school_role)`
+	- `students(curp)`
 	- `student_pickup_contacts(student_id, status)`
 	- `student_pickup_audit_logs(student_id, created_at)`
 	- `messages(thread_id, created_at)`
-	- `threads(school_id, student_id, updated_at)`
+	- `threads(student_id, updated_at)`
 	- `announcements(published_at desc)`
-	- `guest_tour_requests(school_id, requested_datetime)`
-	- `appointments(school_id, status, starts_at)`
+	- `guest_tour_requests(requested_datetime)`
+	- `appointments(status, starts_at)`
 	- `payment_records(student_id, status, paid_at)`
 	- `notification_deliveries(profile_id, in_app_status)`
 - Add trigger function to maintain `updated_at` on mutable tables.

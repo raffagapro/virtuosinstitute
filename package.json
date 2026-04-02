@@ -14,12 +14,16 @@
     "supabase:migrations": "node scripts/manage-supabase-migrations.mjs",
     "supabase:migrations:status": "node scripts/manage-supabase-migrations.mjs status",
     "supabase:migrations:sync": "node scripts/manage-supabase-migrations.mjs sync",
+    "db:push": "npm run supabase:db:push:linked",
+    "db:push:local": "npm run supabase:db:push:local",
+    "db:push:linked": "npm run supabase:db:push:linked",
     "supabase:db:push:local": "node scripts/manage-supabase-migrations.mjs push --env=local",
     "supabase:db:push:local:dry-run": "node scripts/manage-supabase-migrations.mjs push --env=local --dry-run",
     "supabase:db:push:linked": "node scripts/manage-supabase-migrations.mjs push --env=linked",
     "supabase:db:push:linked:dry-run": "node scripts/manage-supabase-migrations.mjs push --env=linked --dry-run"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.101.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.7.0",
     "next": "16.2.1",

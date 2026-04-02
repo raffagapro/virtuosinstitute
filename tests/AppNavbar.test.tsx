@@ -32,6 +32,9 @@ describe("AppNavbar", () => {
 
     const contactLinks = screen.getAllByRole("link", { name: "Contáctanos" });
     expect(contactLinks.some((link) => link.getAttribute("href") === "#contacto")).toBe(true);
+
+    const platformLinks = screen.getAllByRole("link", { name: "Plataforma" });
+    expect(platformLinks.some((link) => link.getAttribute("href") === "/platfrom")).toBe(true);
   });
 
   it("keeps the contact action as a red CTA", () => {

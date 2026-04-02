@@ -13,6 +13,17 @@
    cp .env.example .env.local
    ```
    Fill in the required values (see `.env.example` for descriptions).
+   Companion auth/onboarding requires these values at minimum:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   Parent onboarding notification emails additionally require:
+   - `BREVO_API_KEY`
+   - `INVITE_EMAIL_FROM`
+   Optional single-school bootstrap defaults:
+   - `DEFAULT_SCHOOL_NAME`
+   - `DEFAULT_SCHOOL_SLUG`
+   If no school row exists, onboarding bootstrap will create this default school automatically.
 5. Start the dev server:
    ```bash
    npm run dev
@@ -33,6 +44,9 @@
 | `npm run test:watch` | Run tests in watch mode |
 | `npm run storybook` | Start Storybook component explorer (port 6006) |
 | `npm run build-storybook` | Build static Storybook |
+| `npm run db:push` | Push migrations to linked Supabase project |
+| `npm run db:push:local` | Push migrations to local Supabase |
+| `npm run db:push:linked` | Push migrations to linked Supabase |
 
 ---
 
@@ -97,6 +111,10 @@ Keep `docs/` in sync as you work:
    - `npm run supabase:migrations -- check-push --env=local`
    - `npm run supabase:migrations -- check-push --env=linked`
 - Push with guarded commands:
+   - `npm run db:push` (linked)
+   - `npm run db:push:local`
+   - `npm run db:push:linked`
+ - Legacy equivalents:
    - `npm run supabase:db:push:local`
    - `npm run supabase:db:push:linked`
 

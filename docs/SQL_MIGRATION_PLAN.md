@@ -1,5 +1,7 @@
 # SQL Migration Plan
 
+> Historical baseline: this plan describes the original school-scoped rollout design. Current schema state is single-school global mode after migrations `011`, `012`, and `013`, which removed `schools` and all `school_id` columns.
+
 This document defines the recommended structure for the first Supabase/Postgres migration set for the Virtuós companion platform.
 
 ## Goals

@@ -82,6 +82,12 @@
 ### Technical Setup
 - [x] Add Supabase project configuration and env vars (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)
 - [ ] Configure Supabase Auth provider for Google OAuth sign-in flow
+- [x] Add feature-flagged email/password auth path for QA and future optional rollout
+- [ ] Add Google account switch/recovery flow for users who lose access to their current Google auth account
+  - [ ] Add "I lost access to this Google account" request path from sign-in/review screens
+  - [ ] Add verified recovery workflow to link a replacement Google identity to the existing profile/memberships
+  - [ ] Add superadmin approval boundary and audit log for identity-link changes
+  - [ ] Revoke active sessions on account switch and notify both old/new contact emails when available
 - [~] Add app-managed mailer boundary following alchemist-style architecture (`lib/invite-mailer.ts` + template builders)
   - [x] Brevo provider boundary via `lib/invite-mailer.ts`
   - [x] Localized onboarding email templates for parent review and approval notifications

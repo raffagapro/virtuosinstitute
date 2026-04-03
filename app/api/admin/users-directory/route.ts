@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getAssignableRoles, type ActorScope } from "@/lib/role-assignment-policy";
+import {
+  canManageTargetRole,
+  getAssignableRoles,
+  getEffectiveManagementRole,
+  type ActorScope,
+} from "@/lib/role-assignment-policy";
 import { getDisplayMembershipRole, hasPendingAuthorization } from "@/lib/membership-role";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase";
 
@@ -118,6 +123,15 @@ export async function GET(request: Request) {
     .filter((profileRow) => profileRow.platform_role !== "superadmin")
     .map((profileRow) => {
     const memberships = membershipByProfileId.get(profileRow.id) ?? [];
+    const effectiveManagementRole = getEffectiveManagementRole({
+      platformRole: profileRow.platform_role,
+      memberships,
+    });
+
+    if (!canManageTargetRole(actorScope, effectiveManagementRole)) {
+      return null;
+    }
+
     const displayMembershipRole = getDisplayMembershipRole(memberships);
     const membershipRoles = displayMembershipRole ? [displayMembershipRole] : [];
     const isActiveMembership = memberships.some(
@@ -137,7 +151,18 @@ export async function GET(request: Request) {
       membershipRoles,
       hasPendingAuthorization: pendingAuthorization,
     };
-  });
+  })
+    .filter((user): user is {
+      id: string;
+      fullName: string | null;
+      email: string | null;
+      platformRole: string | null;
+      isActive: boolean;
+      preferredLocale: string;
+      createdAt: string;
+      membershipRoles: string[];
+      hasPendingAuthorization: boolean;
+    } => Boolean(user));
 
   return NextResponse.json({
     ok: true,

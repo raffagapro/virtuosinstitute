@@ -75,3 +75,22 @@ When implementing UI changes, always reuse existing components and patterns firs
 	- Avoid relying on browser-bound PKCE code-verifier links in custom app-managed emails.
 - When using `auth.admin.generateLink`, build callback links from `hashed_token` + `verification_type` when available; only fall back to `action_link` if required.
 - If auth callback receives a legacy PKCE verifier mismatch, route users to sign-in with guidance instead of leaving callback flow stalled.
+
+## PR Summary Command (Required)
+
+When the user asks for a "PR summary", produce a **GitHub-ready PR body** wrapped in a single fenced code block (``` ``` ```) so it can be copied and pasted directly into the GitHub PR description field without any surrounding prose. Do not produce a conversational summary — only the code block.
+
+Format:
+```
+## Summary
+One or two sentences describing what the PR does and why.
+
+## Changes
+Bullet-point list grouped by layer (API, UI, i18n, Tests, Docs). Each bullet names the file (or files) and what changed.
+
+## Testing
+Short note on test coverage added and pass/fail status.
+```
+
+- Use `git log` and `git diff --stat` to discover the actual changed files before writing the body.
+- Keep the tone neutral and technical — suitable for a team code review.

@@ -160,6 +160,7 @@ Superadmin navigation baseline:
 - Superadmin dashboard:
   - global user directory, search/filter by type/role/status
   - feature-flagged dev tools tab for seeded email/password account creation (QA workflows)
+  - dev-password-reset tool (`POST /api/admin/dev-password-reset`) with searchable email selection before password update
   - user activation/deactivation
   - platform/database/storage usage visibility
   - mailer template administration
@@ -208,6 +209,7 @@ Superadmin navigation baseline:
 - Enforcement layers:
   - Route protection for authenticated route groups.
   - Role-based dashboard routing and boundary enforcement.
+  - API-side target-management hierarchy guards in admin mutation routes to block lower-role actors from editing higher-role accounts.
   - Database-level RLS as the source of truth for access control.
 
 ### Identity Strategy

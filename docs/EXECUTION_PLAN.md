@@ -216,6 +216,7 @@
   - [x] Added two-step parent-child transfer flow from parent profile modal (request + explicit confirmation phrase)
 - [x] Add superadmin Dev tab for seeded email-account creation in QA environments
   - [x] Added superadmin Dev tool to reset password for existing email users by account email
+  - [x] Updated dev password reset flow to searchable email selection (debounced search + match table + explicit selection)
 - [ ] Activate/deactivate users and inspect role assignments
 - [ ] Platform usage metrics and storage/database usage visibility
 - [ ] Mailer template management for editing and creating email templates

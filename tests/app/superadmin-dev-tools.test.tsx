@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { SuperadminDevTools } from "@/app/platfrom/dashboard/superadmin/dev/SuperadminDevTools";
 
 const mockGetSession = jest.fn();
@@ -15,6 +15,21 @@ describe("SuperadminDevTools", () => {
   const baseProps = {
     title: "Herramientas de desarrollo",
     subtitle: "Crea cuentas sembradas para QA.",
+    passwordResetTitle: "Cambiar contrasena por correo",
+    passwordResetSubtitle: "Define una nueva contrasena para una cuenta existente de acceso por correo.",
+    passwordResetSubmitLabel: "Cambiar contrasena",
+    passwordResetSubmittingLabel: "Cambiando",
+    passwordResetSuccessLabel: "Contrasena actualizada para {email}.",
+    passwordResetPasswordLabel: "Nueva contrasena",
+    passwordResetPasswordPlaceholder: "Minimo 8 caracteres",
+    passwordResetSearchEmailLabel: "Buscar usuario por correo",
+    passwordResetSearchEmailPlaceholder: "Buscar por correo completo o parcial",
+    passwordResetSearchingLabel: "Buscando usuarios...",
+    passwordResetNoMatchesLabel: "No se encontraron usuarios para esta búsqueda de correo.",
+    passwordResetMatchesTitle: "Usuarios por correo coincidente",
+    passwordResetMatchesEmailColumnLabel: "Correo",
+    passwordResetMatchesActionLabel: "Usar este correo",
+    passwordResetSelectedLabel: "Correo seleccionado: {email}",
     quickUnauthorizedTitle: "Crear cuenta no autorizada (tipo Google)",
     quickUnauthorizedSubtitle: "Crea cuenta invitado pendiente y solicitud pendiente.",
     quickUnauthorizedSubmitLabel: "Crear",
@@ -39,6 +54,7 @@ describe("SuperadminDevTools", () => {
     genericErrorLabel: "No se pudo crear la cuenta sembrada. Verifica permisos e intenta nuevamente.",
     emailAuthDisabledErrorLabel: "El auth por correo esta deshabilitado. Activa AUTH_ENABLE_EMAIL_LOGIN para usar esta herramienta.",
     forbiddenErrorLabel: "Solo superadmin puede crear cuentas desde esta herramienta.",
+    emailNotFoundErrorLabel: "No existe una cuenta de usuario con ese correo.",
     duplicateEmailErrorLabel: "Ese correo ya existe. Usa otro correo o elimina la cuenta previa.",
     serviceRoleMissingErrorLabel: "Falta SUPABASE_SERVICE_ROLE_KEY en el entorno del servidor.",
     invalidInputErrorLabel: "Datos invalidos. Verifica correo, contrasena y campos requeridos.",
@@ -118,7 +134,7 @@ describe("SuperadminDevTools", () => {
     expect(screen.getByText("Cuenta no autorizada creada para pending.user@example.com.")).toBeInTheDocument();
   });
 
-  it("toggles password visibility for both password inputs", () => {
+  it("toggles password visibility for all password inputs", () => {
     render(<SuperadminDevTools {...baseProps} />);
 
     const quickPasswordInput = screen.getAllByLabelText("Contrasena")[0] as HTMLInputElement;
@@ -127,18 +143,24 @@ describe("SuperadminDevTools", () => {
     expect(quickPasswordInput.type).toBe("password");
     expect(seededPasswordInput.type).toBe("password");
 
+    const resetPasswordInput = screen.getByLabelText("Nueva contrasena") as HTMLInputElement;
+
     const showButtons = screen.getAllByRole("button", { name: "Mostrar contrasena" });
     fireEvent.click(showButtons[0]);
     fireEvent.click(showButtons[1]);
+    fireEvent.click(showButtons[2]);
 
     expect(quickPasswordInput.type).toBe("text");
+    expect(resetPasswordInput.type).toBe("text");
     expect(seededPasswordInput.type).toBe("text");
 
     const hideButtons = screen.getAllByRole("button", { name: "Ocultar contrasena" });
     fireEvent.click(hideButtons[0]);
     fireEvent.click(hideButtons[1]);
+    fireEvent.click(hideButtons[2]);
 
     expect(quickPasswordInput.type).toBe("password");
+    expect(resetPasswordInput.type).toBe("password");
     expect(seededPasswordInput.type).toBe("password");
   });
 
@@ -213,5 +235,78 @@ describe("SuperadminDevTools", () => {
     await waitFor(() => {
       expect(screen.getByText("Ese correo ya existe. Usa otro correo o elimina la cuenta previa.")).toBeInTheDocument();
     });
+  });
+
+  it("resets password by email from dev tool", async () => {
+    jest.useFakeTimers();
+
+    mockGetSession.mockResolvedValue({
+      data: {
+        session: {
+          access_token: "token",
+        },
+      },
+    });
+
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          ok: true,
+          users: [
+            {
+              id: "u1",
+              fullName: "QA User",
+              email: "qa.user@example.com",
+              platformRole: null,
+              isActive: true,
+              hasPendingAuthorization: false,
+              preferredLocale: "es-MX",
+              createdAt: "2026-04-01T00:00:00.000Z",
+              membershipRoles: ["parent"],
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ok: true, email: "qa.user@example.com" }),
+      });
+
+    render(<SuperadminDevTools {...baseProps} />);
+
+    fireEvent.change(screen.getByLabelText("Buscar usuario por correo"), { target: { value: "qa.user@" } });
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("qa.user@example.com")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Usar este correo" }));
+    expect(screen.getByLabelText("Buscar usuario por correo")).toHaveValue("qa.user@example.com");
+    fireEvent.change(screen.getByLabelText("Nueva contrasena"), { target: { value: "newpassword123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Cambiar contrasena" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        "/api/admin/dev-password-reset",
+        expect.objectContaining({
+          method: "POST",
+          headers: expect.objectContaining({
+            Authorization: "Bearer token",
+          }),
+          body: JSON.stringify({
+            email: "qa.user@example.com",
+            password: "newpassword123",
+          }),
+        })
+      );
+    });
+
+    expect(screen.getByText("Contrasena actualizada para qa.user@example.com.")).toBeInTheDocument();
+
+    jest.useRealTimers();
   });
 });

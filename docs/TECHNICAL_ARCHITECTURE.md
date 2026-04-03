@@ -141,6 +141,7 @@ Shared dashboard presentation is centralized in reusable UI primitives:
 - `components/ui/AppDashboardCard.tsx`
 - `components/ui/AppDashboardNavbar.tsx`
 - `components/ui/AppDashboardSidebar.tsx`
+- `components/ui/AppUsersDirectoryControls.tsx`
 Feature-level dashboards compose these primitives while reducing visibility and capability by role.
 
 Superadmin navigation baseline:
@@ -149,12 +150,17 @@ Superadmin navigation baseline:
 - Sidebar users link shows a pending-authorization badge (icon + count) sourced from superadmin users-directory data.
 - Users directory data source: `GET /api/admin/users-directory` (superadmin-only).
 - Users directory table ordering prioritizes pending-authorization users at the top before secondary ordering controls.
+- Parent-child reassignment flow is two-step and audited:
+  - create transfer request (source parent, target parent, selected children, contact notes)
+  - require explicit confirmation phrase before any guardian link is moved
+  - APIs: `GET/POST /api/admin/parent-child-transfer` (superadmin/school_owner authorized)
 
 ### Role-Oriented Feature Surfaces
 
 - Superadmin dashboard:
   - global user directory, search/filter by type/role/status
   - feature-flagged dev tools tab for seeded email/password account creation (QA workflows)
+  - dev-password-reset tool (`POST /api/admin/dev-password-reset`) with searchable email selection before password update
   - user activation/deactivation
   - platform/database/storage usage visibility
   - mailer template administration
@@ -199,9 +205,11 @@ Superadmin navigation baseline:
   - `parent`: can access only threads/announcements/student context tied to linked students.
   - `student`: no direct authentication; student information is surfaced through linked parent accounts.
   - `guest`: no login, public calendar-only capability to request a school tour/info appointment.
+  - membership invariant: one active operational role per profile is enforced in `school_memberships`; reassignment deactivates the previous active role before activating the new role.
 - Enforcement layers:
   - Route protection for authenticated route groups.
   - Role-based dashboard routing and boundary enforcement.
+  - API-side target-management hierarchy guards in admin mutation routes to block lower-role actors from editing higher-role accounts.
   - Database-level RLS as the source of truth for access control.
 
 ### Identity Strategy

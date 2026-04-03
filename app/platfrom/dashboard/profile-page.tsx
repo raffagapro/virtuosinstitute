@@ -1,7 +1,7 @@
 "use client";
 
 import { UserProfileForm } from "@/components/ui";
-import { defaultLocale, translate, type Locale } from "@/lib/i18n";
+import { defaultLocale, translate } from "@/lib/i18n";
 
 interface SharedProfilePageProps {
   expectedPath: string;
@@ -9,6 +9,7 @@ interface SharedProfilePageProps {
 }
 
 export function SharedProfilePage({ expectedPath, isParent }: SharedProfilePageProps) {
+  void expectedPath;
   const locale = defaultLocale;
 
   return (
@@ -21,6 +22,7 @@ export function SharedProfilePage({ expectedPath, isParent }: SharedProfilePageP
         fullName: translate(locale, "platform.profile.fullName"),
         email: translate(locale, "platform.profile.email"),
         phone: translate(locale, "platform.profile.phone"),
+        phonePlaceholder: translate(locale, "platform.profile.phonePlaceholder"),
         preferredLocale: translate(locale, "platform.profile.language"),
         curp: translate(locale, "platform.profile.curp"),
         rfc: translate(locale, "platform.profile.rfc"),

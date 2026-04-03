@@ -116,6 +116,10 @@
   - [x] Added users-directory controls: name/email search, active/inactive filters, role filter, and ordering options
   - [x] Added pending-authorization priority ordering in users-directory table rows
   - [x] Added sidebar notification badge with pending users-to-authorize count
+  - [x] Synced users-directory table refresh with sidebar pending-notification refresh triggers (custom event driven)
+  - [x] Updated parent-transfer target search to debounce + explicit status feedback (searching/matches/selected)
+  - [x] Updated parent-transfer search results to render as a table with per-row transfer action + explicit child selection (no auto-select-all)
+  - [x] Added localized phone placeholders in profile editors to suggest format while allowing international numbers
 
 ### Data & Auth Setup
 - [x] Create initial schema migration (schools, profiles, school_memberships, parent_profiles, staff_profiles, identity_documents, parent_approval_requests, students, student_guardians, student_documents, student_pickup_contacts, student_pickup_authorizations, student_pickup_audit_logs, academic_classes, teacher_class_assignments, student_tuition_accounts, tuition_periods, tuition_quotes, payment_records, threads, thread_participants, messages, announcements, notification_campaigns, notification_deliveries, media_assets, calendars, calendar_events, availability_rules, appointment_slots, appointments, appointment_notes, guest_tour_requests)
@@ -209,7 +213,10 @@
 ### Superadmin Platform Dashboard
 - [~] Global user directory with id, role, status, and search/filter controls (single-school scope)
   - [x] Added pending-status authorization modal from users directory with role assignment and approve action
+  - [x] Added two-step parent-child transfer flow from parent profile modal (request + explicit confirmation phrase)
 - [x] Add superadmin Dev tab for seeded email-account creation in QA environments
+  - [x] Added superadmin Dev tool to reset password for existing email users by account email
+  - [x] Updated dev password reset flow to searchable email selection (debounced search + match table + explicit selection)
 - [ ] Activate/deactivate users and inspect role assignments
 - [ ] Platform usage metrics and storage/database usage visibility
 - [ ] Mailer template management for editing and creating email templates
@@ -226,7 +233,10 @@
 
 ### User/Relationship Management
 - [ ] Admin assignment flows for student ↔ guardian relationships
-- [ ] Basic role administration safeguards
+- [x] Basic role administration safeguards
+  - [x] Enforced single active school membership role per profile in API reassignment/approval flows
+  - [x] Added DB invariant migration to prevent multiple active role rows per profile
+  - [x] Blocked lower-role actors from editing, deactivating, approving, or reassigning higher-role accounts
 - [ ] School owner user-management panel for school staff role assignment
 - [ ] Staff directory search with role-aware visibility and edit restrictions
 - [ ] Parent approval queue and child-onboarding approval queue

@@ -29,10 +29,16 @@ export default function StaffDashboardLayout({ children }: StaffDashboardLayoutP
           <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 md:flex-row">
             <AppDashboardSidebar
               ariaLabel={translate(locale, "platform.dashboard.sidebar.pages")}
+              pendingUsersBadgeLabel={translate(locale, "platform.dashboard.superadmin.sidebar.pendingBadge")}
               items={[
                 {
                   href: "/platfrom/dashboard/staff",
                   label: translate(locale, "platform.dashboard.staff.sidebar.home"),
+                },
+                {
+                  href: "/platfrom/dashboard/staff/users",
+                  label: translate(locale, "platform.dashboard.staff.sidebar.users"),
+                  showPendingAuthBadge: true,
                 },
                 {
                   href: "/platfrom/dashboard/staff/profile",

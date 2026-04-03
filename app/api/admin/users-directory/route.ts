@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getAssignableRoles, type ActorScope } from "@/lib/role-assignment-policy";
+import { getDisplayMembershipRole, hasPendingAuthorization } from "@/lib/membership-role";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase";
 
 interface MembershipRoleRow {
@@ -6,6 +8,8 @@ interface MembershipRoleRow {
   school_role: string;
   is_active: boolean;
   approval_status: string;
+  created_at: string;
+  updated_at: string;
 }
 
 function getBearerToken(request: Request): string | null {
@@ -30,9 +34,9 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, reason: "invalid-session" }, { status: 401 });
   }
 
-  let adminSupabase: any;
+  let adminSupabase: ReturnType<typeof getSupabaseAdminClient>;
   try {
-    adminSupabase = getSupabaseAdminClient() as any;
+    adminSupabase = getSupabaseAdminClient();
   } catch {
     return NextResponse.json({ ok: false, reason: "service-role-missing" }, { status: 503 });
   }
@@ -43,9 +47,41 @@ export async function GET(request: Request) {
     .eq("id", actorData.user.id)
     .maybeSingle();
 
-  if (actorProfileError || (actorProfile as { platform_role: string | null } | null)?.platform_role !== "superadmin") {
+  if (actorProfileError) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }
+
+  const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+
+  let isOwner = false;
+  let isCoordination = false;
+
+  if (!isSuperadmin) {
+    const { data: actorMembershipRows, error: actorMembershipError } = await adminSupabase
+      .from("school_memberships")
+      .select("school_role")
+      .eq("profile_id", actorData.user.id)
+      .eq("is_active", true)
+      .eq("approval_status", "approved");
+
+    if (actorMembershipError) {
+      return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
+    }
+
+    const actorRoles = (actorMembershipRows as Array<{ school_role: string }> | null) ?? [];
+    isOwner = actorRoles.some((role) => role.school_role === "school_owner");
+    isCoordination = actorRoles.some((role) => role.school_role === "coordination");
+  }
+
+  if (!isSuperadmin && !isOwner && !isCoordination) {
+    return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
+  }
+
+  const actorScope: ActorScope = isSuperadmin
+    ? "superadmin"
+    : isOwner
+      ? "school_owner"
+      : "coordination";
 
   const { data: profileRows, error: profileReadError } = await adminSupabase
     .from("profiles")
@@ -58,7 +94,7 @@ export async function GET(request: Request) {
 
   const { data: membershipRows, error: membershipReadError } = await adminSupabase
     .from("school_memberships")
-    .select("profile_id, school_role, is_active, approval_status");
+    .select("profile_id, school_role, is_active, approval_status, created_at, updated_at");
 
   if (membershipReadError) {
     return NextResponse.json({ ok: false, reason: "memberships-read-failed" }, { status: 500 });
@@ -82,16 +118,12 @@ export async function GET(request: Request) {
     .filter((profileRow) => profileRow.platform_role !== "superadmin")
     .map((profileRow) => {
     const memberships = membershipByProfileId.get(profileRow.id) ?? [];
-    const displayMemberships = memberships.filter(
-      (membership) => membership.is_active || membership.approval_status === "pending"
-    );
-    const membershipRoles = Array.from(new Set(displayMemberships.map((membership) => membership.school_role)));
+    const displayMembershipRole = getDisplayMembershipRole(memberships);
+    const membershipRoles = displayMembershipRole ? [displayMembershipRole] : [];
     const isActiveMembership = memberships.some(
       (membership) => membership.is_active && membership.approval_status === "approved"
     );
-    const hasPendingAuthorization = memberships.some(
-      (membership) => membership.approval_status === "pending"
-    );
+    const pendingAuthorization = hasPendingAuthorization(memberships);
     const isActive = isActiveMembership;
 
     return {
@@ -103,9 +135,14 @@ export async function GET(request: Request) {
       preferredLocale: profileRow.preferred_locale,
       createdAt: profileRow.created_at,
       membershipRoles,
-      hasPendingAuthorization,
+      hasPendingAuthorization: pendingAuthorization,
     };
   });
 
-  return NextResponse.json({ ok: true, users });
+  return NextResponse.json({
+    ok: true,
+    users,
+    actorScope,
+    assignableRoles: getAssignableRoles(actorScope),
+  });
 }

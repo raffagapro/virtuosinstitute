@@ -9,4 +9,5 @@ export { AppDashboardCard } from "./AppDashboardCard";
 export { AppDashboardNavbar } from "./AppDashboardNavbar";
 export { AppDashboardSidebar } from "./AppDashboardSidebar";
 export { AppPageLoader } from "./AppPageLoader";
+export { AppUsersDirectoryControls } from "./AppUsersDirectoryControls";
 export { UserProfileForm } from "./UserProfileForm";

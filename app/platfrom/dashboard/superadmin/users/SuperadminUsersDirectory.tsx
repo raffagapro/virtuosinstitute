@@ -2,12 +2,6 @@
 
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import {
-  AlertCircle,
-  ArrowDownAZ,
-  ArrowDownNarrowWide,
-  ArrowUpNarrowWide,
-  CheckCircle2,
-  CircleOff,
   ShieldCheck,
   Users,
   Crown,
@@ -20,7 +14,20 @@ import {
   X,
   Pencil,
 } from "lucide-react";
-import { emitSuperadminPendingUsersRefresh } from "@/lib/dashboard-events";
+import {
+  AppUsersDirectoryControls,
+  type AppUsersDirectoryOrderFilter,
+  type AppUsersDirectoryStatusFilter,
+} from "@/components/ui";
+import {
+  SUPERADMIN_PENDING_USERS_REFRESH_EVENT,
+  emitSuperadminPendingUsersRefresh,
+} from "@/lib/dashboard-events";
+import {
+  canManageTargetRole,
+  getEffectiveManagementRole,
+  type ActorScope,
+} from "@/lib/role-assignment-policy";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 interface UserDirectoryEntry {
@@ -48,6 +55,31 @@ interface ProfileParentDetails {
   invoiceRequired: boolean;
 }
 
+interface ProfileStudentDetails {
+  curp: string | null;
+  gradeLevel: string | null;
+  bloodType: string | null;
+  allergies: string | null;
+  enrollmentDate: string | null;
+  approvalStatus: string | null;
+  onboardingStatus: string | null;
+  dataAuthorizationSignedAt: string | null;
+}
+
+interface ParentTransferStudent {
+  id: string;
+  fullName: string;
+  gradeLevel: string | null;
+  approvalStatus: string | null;
+  guardianLinkStatus: string;
+}
+
+interface ParentTransferCandidate {
+  id: string;
+  fullName: string | null;
+  email: string | null;
+}
+
 interface ProfileModalDetails {
   profile: {
     id: string;
@@ -61,12 +93,23 @@ interface ProfileModalDetails {
   };
   memberships: ProfileMembership[];
   parentProfile?: ProfileParentDetails | null;
+  studentProfile?: ProfileStudentDetails | null;
 }
 
-type StatusFilter = "all" | "active" | "inactive";
-type OrderFilter = "newest" | "oldest" | "name";
-
 type BadgeTone = "superadmin" | "school_owner" | "direction" | "coordination" | "teacher" | "clerk" | "parent" | "student" | "guest";
+
+const membershipRolePriority: Record<string, number> = {
+  school_owner: 0,
+  direction: 1,
+  coordination: 2,
+  teacher: 3,
+  clerk: 4,
+  parent: 5,
+  student: 6,
+  guest: 7,
+};
+
+const TRANSFER_TARGET_SEARCH_DEBOUNCE_MS = 2000;
 
 const roleBadgeConfig: Record<
   BadgeTone,
@@ -143,7 +186,6 @@ interface SuperadminUsersDirectoryProps {
   statusAllLabel: string;
   statusActiveLabel: string;
   statusInactiveLabel: string;
-  statusPendingAuthorizationLabel: string;
   roleFilterLabel: string;
   roleAllLabel: string;
   orderNewestLabel: string;
@@ -175,12 +217,47 @@ interface SuperadminUsersDirectoryProps {
   profileModalFullName: string;
   profileModalEmail: string;
   profileModalPhone: string;
+  profileModalPhonePlaceholder?: string;
   profileModalDateOfBirth: string;
   profileModalLanguage: string;
   profileModalCurp?: string;
   profileModalRfc?: string;
   profileModalProfession?: string;
   profileModalInvoiceRequired?: string;
+  profileModalStudentGradeLevel?: string;
+  profileModalStudentBloodType?: string;
+  profileModalStudentAllergies?: string;
+  profileModalStudentEnrollmentDate?: string;
+  profileModalStudentApprovalStatus?: string;
+  profileModalStudentOnboardingStatus?: string;
+  profileModalStudentDataAuthorizationSignedAt?: string;
+  profileModalTransferSectionTitle?: string;
+  profileModalTransferTargetParentLabel?: string;
+  profileModalTransferTargetParentSearchPlaceholder?: string;
+  profileModalTransferTargetParentNoMatchesLabel?: string;
+  profileModalTransferTargetParentSameAccountLabel?: string;
+  profileModalTransferTargetParentSearchingLabel?: string;
+  profileModalTransferTargetParentResolvedLabel?: string;
+  profileModalTransferTargetParentRefineLabel?: string;
+  profileModalTransferMatchesTitleLabel?: string;
+  profileModalTransferMatchesParentColumnLabel?: string;
+  profileModalTransferMatchesEmailColumnLabel?: string;
+  profileModalTransferMatchesActionLabel?: string;
+  profileModalTransferStudentsHintLabel?: string;
+  profileModalTransferStudentsLabel?: string;
+  profileModalTransferContactCurrentParentLabel?: string;
+  profileModalTransferContactTargetParentLabel?: string;
+  profileModalTransferNotesLabel?: string;
+  profileModalTransferCreateRequestLabel?: string;
+  profileModalTransferCreatingRequestLabel?: string;
+  profileModalTransferConfirmPhraseLabel?: string;
+  profileModalTransferConfirmButtonLabel?: string;
+  profileModalTransferConfirmingButtonLabel?: string;
+  profileModalTransferEmptyStudentsLabel?: string;
+  profileModalTransferEmptyCandidatesLabel?: string;
+  profileModalTransferRequestCreatedLabel?: string;
+  profileModalTransferSuccessLabel?: string;
+  profileModalTransferErrorLabel?: string;
   profileModalYes?: string;
   profileModalNo?: string;
   membershipRoleEditLabel?: string;
@@ -197,6 +274,7 @@ interface SuperadminUsersDirectoryProps {
   statusApprovedLabel?: string;
   statusRejectedLabel?: string;
   statusSuspendedLabel?: string;
+  usersDirectoryApiPath?: string;
 }
 
 export function SuperadminUsersDirectory({
@@ -209,7 +287,6 @@ export function SuperadminUsersDirectory({
   statusAllLabel,
   statusActiveLabel,
   statusInactiveLabel,
-  statusPendingAuthorizationLabel,
   roleFilterLabel,
   roleAllLabel,
   orderNewestLabel,
@@ -241,12 +318,47 @@ export function SuperadminUsersDirectory({
   profileModalFullName,
   profileModalEmail,
   profileModalPhone,
+  profileModalPhonePlaceholder,
   profileModalDateOfBirth,
   profileModalLanguage,
   profileModalCurp,
   profileModalRfc,
   profileModalProfession,
   profileModalInvoiceRequired,
+  profileModalStudentGradeLevel,
+  profileModalStudentBloodType,
+  profileModalStudentAllergies,
+  profileModalStudentEnrollmentDate,
+  profileModalStudentApprovalStatus,
+  profileModalStudentOnboardingStatus,
+  profileModalStudentDataAuthorizationSignedAt,
+  profileModalTransferSectionTitle,
+  profileModalTransferTargetParentLabel,
+  profileModalTransferTargetParentSearchPlaceholder,
+  profileModalTransferTargetParentNoMatchesLabel,
+  profileModalTransferTargetParentSameAccountLabel,
+  profileModalTransferTargetParentSearchingLabel,
+  profileModalTransferTargetParentResolvedLabel,
+  profileModalTransferTargetParentRefineLabel,
+  profileModalTransferMatchesTitleLabel,
+  profileModalTransferMatchesParentColumnLabel,
+  profileModalTransferMatchesEmailColumnLabel,
+  profileModalTransferMatchesActionLabel,
+  profileModalTransferStudentsHintLabel,
+  profileModalTransferStudentsLabel,
+  profileModalTransferContactCurrentParentLabel,
+  profileModalTransferContactTargetParentLabel,
+  profileModalTransferNotesLabel,
+  profileModalTransferCreateRequestLabel,
+  profileModalTransferCreatingRequestLabel,
+  profileModalTransferConfirmPhraseLabel,
+  profileModalTransferConfirmButtonLabel,
+  profileModalTransferConfirmingButtonLabel,
+  profileModalTransferEmptyStudentsLabel,
+  profileModalTransferEmptyCandidatesLabel,
+  profileModalTransferRequestCreatedLabel,
+  profileModalTransferSuccessLabel,
+  profileModalTransferErrorLabel,
   profileModalYes,
   profileModalNo,
   membershipRoleEditLabel,
@@ -263,11 +375,13 @@ export function SuperadminUsersDirectory({
   statusApprovedLabel,
   statusRejectedLabel,
   statusSuspendedLabel,
+  usersDirectoryApiPath = "/api/admin/users-directory",
 }: SuperadminUsersDirectoryProps) {
   const supabase = useMemo(() => getSupabaseBrowserClient(), []);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [users, setUsers] = useState<UserDirectoryEntry[]>([]);
+  const [actorScope, setActorScope] = useState<ActorScope>("superadmin");
 
   const roleLabels = useMemo(
     () => ({
@@ -292,13 +406,23 @@ export function SuperadminUsersDirectory({
     ]
   );
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<AppUsersDirectoryStatusFilter>("all");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [orderFilter, setOrderFilter] = useState<OrderFilter>("newest");
+  const [orderFilter, setOrderFilter] = useState<AppUsersDirectoryOrderFilter>("newest");
   const [selectedPendingUser, setSelectedPendingUser] = useState<UserDirectoryEntry | null>(null);
   const [assignedRole, setAssignedRole] = useState<"school_owner" | "direction" | "coordination" | "teacher" | "clerk" | "parent" | "student" | "guest">("parent");
   const [isAuthorizing, setIsAuthorizing] = useState(false);
   const [authorizeError, setAuthorizeError] = useState<string | null>(null);
+  const [assignableRoles, setAssignableRoles] = useState<string[]>([
+    "school_owner",
+    "direction",
+    "coordination",
+    "teacher",
+    "clerk",
+    "parent",
+    "student",
+    "guest",
+  ]);
 
   const [selectedProfileUser, setSelectedProfileUser] = useState<UserDirectoryEntry | null>(null);
   const [profileFormData, setProfileFormData] = useState({
@@ -315,6 +439,170 @@ export function SuperadminUsersDirectory({
   const [isSavingMembershipRole, setIsSavingMembershipRole] = useState(false);
   const [isEditingMembershipRole, setIsEditingMembershipRole] = useState(false);
   const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+  const [isTransferContextLoading, setIsTransferContextLoading] = useState(false);
+  const [transferStudents, setTransferStudents] = useState<ParentTransferStudent[]>([]);
+  const [transferCandidateParents, setTransferCandidateParents] = useState<ParentTransferCandidate[]>([]);
+  const [transferTargetParentSearch, setTransferTargetParentSearch] = useState("");
+  const [debouncedTransferTargetParentSearch, setDebouncedTransferTargetParentSearch] = useState("");
+  const [selectedTransferStudentIds, setSelectedTransferStudentIds] = useState<string[]>([]);
+  const [selectedTransferTargetParentId, setSelectedTransferTargetParentId] = useState("");
+  const [transferContactedCurrentParent, setTransferContactedCurrentParent] = useState(false);
+  const [transferContactedTargetParent, setTransferContactedTargetParent] = useState(false);
+  const [transferNotes, setTransferNotes] = useState("");
+  const [transferRequestId, setTransferRequestId] = useState<string | null>(null);
+  const [transferConfirmPhrase, setTransferConfirmPhrase] = useState("");
+  const [isCreatingTransferRequest, setIsCreatingTransferRequest] = useState(false);
+  const [isConfirmingTransfer, setIsConfirmingTransfer] = useState(false);
+  const [transferFeedback, setTransferFeedback] = useState<{ tone: "error" | "success"; message: string } | null>(null);
+
+  const transferLabels = {
+    sectionTitle: profileModalTransferSectionTitle || "Transfer children to another parent",
+    targetParent: profileModalTransferTargetParentLabel || "Target parent",
+    targetParentSearchPlaceholder:
+      profileModalTransferTargetParentSearchPlaceholder || "Search parent by name or email",
+    targetParentNoMatches:
+      profileModalTransferTargetParentNoMatchesLabel || "No matching parent account found.",
+    targetParentSameAccount:
+      profileModalTransferTargetParentSameAccountLabel || "You cannot transfer children to the same parent account.",
+    targetParentSearching:
+      profileModalTransferTargetParentSearchingLabel || "Searching parent account...",
+    targetParentResolved:
+      profileModalTransferTargetParentResolvedLabel || "Selected target parent: {target}",
+    targetParentRefine:
+      profileModalTransferTargetParentRefineLabel || "Found multiple matches ({count}). Type full email to select one.",
+    matchesTitle: profileModalTransferMatchesTitleLabel || "Matching parent accounts",
+    matchesParentColumn: profileModalTransferMatchesParentColumnLabel || "Parent",
+    matchesEmailColumn: profileModalTransferMatchesEmailColumnLabel || "Email",
+    matchesAction: profileModalTransferMatchesActionLabel || "Transfer selected children",
+    students: profileModalTransferStudentsLabel || "Children to transfer",
+    studentsHint: profileModalTransferStudentsHintLabel || "Select one or more children to transfer.",
+    contactCurrentParent: profileModalTransferContactCurrentParentLabel || "Current parent contacted",
+    contactTargetParent: profileModalTransferContactTargetParentLabel || "Target parent contacted",
+    notes: profileModalTransferNotesLabel || "Communication notes",
+    createRequest: profileModalTransferCreateRequestLabel || "Create transfer request",
+    creatingRequest: profileModalTransferCreatingRequestLabel || "Creating request...",
+    confirmPhrase: profileModalTransferConfirmPhraseLabel || "Type TRANSFER to confirm",
+    confirmButton: profileModalTransferConfirmButtonLabel || "Confirm transfer",
+    confirmingButton: profileModalTransferConfirmingButtonLabel || "Confirming transfer...",
+    emptyStudents: profileModalTransferEmptyStudentsLabel || "No linked children found for this parent.",
+    emptyCandidates: profileModalTransferEmptyCandidatesLabel || "No candidate parent accounts available.",
+    requestCreated: profileModalTransferRequestCreatedLabel || "Transfer request created. Confirm to execute.",
+    success: profileModalTransferSuccessLabel || "Children were transferred successfully.",
+    error: profileModalTransferErrorLabel || "Could not process transfer request. Please try again.",
+  };
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedTransferTargetParentSearch(transferTargetParentSearch);
+    }, TRANSFER_TARGET_SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [transferTargetParentSearch]);
+
+  const filteredTransferCandidateParents = useMemo(() => {
+    const query = debouncedTransferTargetParentSearch.trim().toLowerCase();
+    if (!query) {
+      return [];
+    }
+
+    return transferCandidateParents.filter((candidate) => {
+      const fullName = candidate.fullName?.toLowerCase() || "";
+      const email = candidate.email?.toLowerCase() || "";
+      return fullName.includes(query) || email.includes(query);
+    });
+  }, [debouncedTransferTargetParentSearch, transferCandidateParents]);
+
+  const resolvedTransferTargetParent = useMemo(() => {
+    const query = debouncedTransferTargetParentSearch.trim().toLowerCase();
+    if (!query) {
+      return null;
+    }
+
+    const exactMatches = filteredTransferCandidateParents.filter((candidate) => {
+      const fullName = candidate.fullName?.trim().toLowerCase() || "";
+      const email = candidate.email?.trim().toLowerCase() || "";
+      return fullName === query || email === query;
+    });
+
+    if (exactMatches.length === 1) {
+      return exactMatches[0];
+    }
+
+    if (exactMatches.length === 0 && filteredTransferCandidateParents.length === 1) {
+      return filteredTransferCandidateParents[0];
+    }
+
+    return null;
+  }, [debouncedTransferTargetParentSearch, filteredTransferCandidateParents]);
+
+  const transferTargetSearchStatus = useMemo(() => {
+    const rawQuery = transferTargetParentSearch.trim();
+    if (!rawQuery) {
+      return null;
+    }
+
+    const isDebouncing = rawQuery !== debouncedTransferTargetParentSearch.trim();
+    if (isDebouncing) {
+      return transferLabels.targetParentSearching;
+    }
+
+    const query = debouncedTransferTargetParentSearch.trim().toLowerCase();
+    const sourceParentName =
+      profileDetails?.profile.fullName?.trim().toLowerCase() ||
+      selectedProfileUser?.fullName?.trim().toLowerCase() ||
+      "";
+    const sourceParentEmail =
+      profileDetails?.profile.email?.trim().toLowerCase() ||
+      selectedProfileUser?.email?.trim().toLowerCase() ||
+      "";
+
+    const matchesSourceParent =
+      query.length > 0 &&
+      ((sourceParentName.length > 0 && sourceParentName.includes(query)) ||
+        (sourceParentEmail.length > 0 && sourceParentEmail.includes(query)));
+
+    if (matchesSourceParent && filteredTransferCandidateParents.length === 0) {
+      return transferLabels.targetParentSameAccount;
+    }
+
+    if (filteredTransferCandidateParents.length === 0) {
+      return transferLabels.targetParentNoMatches;
+    }
+
+    if (resolvedTransferTargetParent) {
+      const resolvedLabel =
+        resolvedTransferTargetParent.fullName ||
+        resolvedTransferTargetParent.email ||
+        resolvedTransferTargetParent.id;
+
+      return transferLabels.targetParentResolved.replace("{target}", resolvedLabel);
+    }
+
+    return transferLabels.targetParentRefine.replace(
+      "{count}",
+      String(filteredTransferCandidateParents.length)
+    );
+  }, [
+    debouncedTransferTargetParentSearch,
+    filteredTransferCandidateParents,
+    resolvedTransferTargetParent,
+    transferLabels.targetParentNoMatches,
+    transferLabels.targetParentRefine,
+    transferLabels.targetParentResolved,
+    transferLabels.targetParentSameAccount,
+    transferLabels.targetParentSearching,
+    profileDetails?.profile.email,
+    profileDetails?.profile.fullName,
+    selectedProfileUser?.email,
+    selectedProfileUser?.fullName,
+    transferTargetParentSearch,
+  ]);
+
+  useEffect(() => {
+    setSelectedTransferTargetParentId(resolvedTransferTargetParent?.id || "");
+  }, [resolvedTransferTargetParent]);
 
   const approvalStatusLabels = useMemo(
     () => ({
@@ -326,11 +614,17 @@ export function SuperadminUsersDirectory({
     [pendingStatusLabel, statusApprovedLabel, statusRejectedLabel, statusSuspendedLabel]
   );
 
+  const isProfileFormBusy = isSavingProfile || isProfileDetailsLoading;
+
   useEffect(() => {
     let isCancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let activeRequestId = 0;
 
     const fetchUsers = async () => {
+      activeRequestId += 1;
+      const requestId = activeRequestId;
+
       setIsLoading(true);
       setHasError(false);
 
@@ -357,7 +651,7 @@ export function SuperadminUsersDirectory({
         });
       }
 
-      if (!sessionToken) {
+      if (!sessionToken || requestId !== activeRequestId) {
         if (!isCancelled) {
           setHasError(true);
           setIsLoading(false);
@@ -365,7 +659,7 @@ export function SuperadminUsersDirectory({
         return;
       }
 
-      const response = await fetch("/api/admin/users-directory", {
+      const response = await fetch(usersDirectoryApiPath, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
@@ -374,44 +668,76 @@ export function SuperadminUsersDirectory({
       });
 
       if (!response.ok) {
-        if (!isCancelled) {
+        if (!isCancelled && requestId === activeRequestId) {
           setHasError(true);
           setIsLoading(false);
         }
         return;
       }
 
-      const payload = (await response.json()) as { ok: boolean; users?: UserDirectoryEntry[] };
+      const payload = (await response.json()) as {
+        ok: boolean;
+        users?: UserDirectoryEntry[];
+        assignableRoles?: string[];
+        actorScope?: ActorScope;
+      };
       if (!payload.ok || !payload.users) {
-        if (!isCancelled) {
+        if (!isCancelled && requestId === activeRequestId) {
           setHasError(true);
           setIsLoading(false);
         }
         return;
       }
 
-      if (!isCancelled) {
+      if (!isCancelled && requestId === activeRequestId) {
         setUsers(payload.users);
+        if (payload.actorScope) {
+          setActorScope(payload.actorScope);
+        }
+        if (Array.isArray(payload.assignableRoles) && payload.assignableRoles.length > 0) {
+          setAssignableRoles(payload.assignableRoles);
+          setAssignedRole((previousRole) => {
+            if (payload.assignableRoles?.includes(previousRole)) {
+              return previousRole;
+            }
+
+            const fallbackRole = payload.assignableRoles?.[0];
+            return (fallbackRole as typeof previousRole) || previousRole;
+          });
+        }
         setIsLoading(false);
       }
     };
 
+    const handlePendingUsersRefresh = (event: Event) => {
+      const customEvent = event as CustomEvent<{ source?: string }>;
+      if (customEvent.detail?.source === "users-directory") {
+        return;
+      }
+
+      void fetchUsers();
+    };
+
     void fetchUsers();
+
+    window.addEventListener(SUPERADMIN_PENDING_USERS_REFRESH_EVENT, handlePendingUsersRefresh as EventListener);
 
     return () => {
       isCancelled = true;
+      activeRequestId += 1;
       if (retryTimer) {
         clearTimeout(retryTimer);
       }
+      window.removeEventListener(SUPERADMIN_PENDING_USERS_REFRESH_EVENT, handlePendingUsersRefresh as EventListener);
     };
-  }, [supabase]);
+  }, [supabase, usersDirectoryApiPath]);
 
   useEffect(() => {
-    emitSuperadminPendingUsersRefresh();
+    emitSuperadminPendingUsersRefresh("users-directory");
   }, [users]);
 
   const roleOptions = useMemo(() => {
-    const uniqueRoles = new Set<string>();
+    const uniqueRoles = new Set<string>(assignableRoles);
     users.forEach((user) => {
       if (user.platformRole && user.platformRole !== "superadmin") {
         uniqueRoles.add(user.platformRole);
@@ -419,8 +745,17 @@ export function SuperadminUsersDirectory({
       user.membershipRoles.forEach((role) => uniqueRoles.add(role));
     });
 
-    return Array.from(uniqueRoles).sort((a, b) => a.localeCompare(b));
-  }, [users]);
+    return Array.from(uniqueRoles).sort((leftRole, rightRole) => {
+      const leftPriority = membershipRolePriority[leftRole] ?? Number.MAX_SAFE_INTEGER;
+      const rightPriority = membershipRolePriority[rightRole] ?? Number.MAX_SAFE_INTEGER;
+
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority;
+      }
+
+      return leftRole.localeCompare(rightRole);
+    });
+  }, [assignableRoles, users]);
 
   const visibleUsers = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -469,7 +804,27 @@ export function SuperadminUsersDirectory({
     [visibleUsers]
   );
 
-  const roleAssignOptions = useMemo(
+  const selectedProfileEffectiveRole = useMemo(
+    () =>
+      getEffectiveManagementRole({
+        platformRole: profileDetails?.profile.platformRole ?? selectedProfileUser?.platformRole ?? null,
+        memberships: profileDetails?.memberships,
+        membershipRoles: selectedProfileUser?.membershipRoles,
+      }),
+    [
+      profileDetails?.memberships,
+      profileDetails?.profile.platformRole,
+      selectedProfileUser?.membershipRoles,
+      selectedProfileUser?.platformRole,
+    ]
+  );
+
+  const canManageSelectedProfile = useMemo(
+    () => canManageTargetRole(actorScope, selectedProfileEffectiveRole),
+    [actorScope, selectedProfileEffectiveRole]
+  );
+
+  const allRoleOptions = useMemo(
     () => [
       { value: "school_owner", label: roleOptionSchoolOwnerLabel },
       { value: "direction", label: roleOptionDirectionLabel },
@@ -492,9 +847,15 @@ export function SuperadminUsersDirectory({
     ]
   );
 
+  const roleAssignOptions = useMemo(
+    () => allRoleOptions.filter((roleOption) => assignableRoles.includes(roleOption.value)),
+    [allRoleOptions, assignableRoles]
+  );
+
   const openAuthorizeModal = (user: UserDirectoryEntry) => {
     setSelectedPendingUser(user);
-    setAssignedRole("parent");
+    const fallbackRole = roleAssignOptions.find((role) => role.value === "parent")?.value || roleAssignOptions[0]?.value || "parent";
+    setAssignedRole(fallbackRole as typeof assignedRole);
     setAuthorizeError(null);
   };
 
@@ -578,6 +939,17 @@ export function SuperadminUsersDirectory({
     setProfileError(null);
     setShowDeactivateConfirm(false);
     setIsEditingMembershipRole(false);
+    setTransferFeedback(null);
+    setTransferRequestId(null);
+    setTransferConfirmPhrase("");
+    setTransferStudents([]);
+    setTransferCandidateParents([]);
+    setTransferTargetParentSearch("");
+    setSelectedTransferStudentIds([]);
+    setSelectedTransferTargetParentId("");
+    setTransferContactedCurrentParent(false);
+    setTransferContactedTargetParent(false);
+    setTransferNotes("");
 
     try {
       const {
@@ -606,6 +978,7 @@ export function SuperadminUsersDirectory({
         profile?: ProfileModalDetails["profile"];
         memberships?: ProfileMembership[];
         parentProfile?: ProfileParentDetails | null;
+        studentProfile?: ProfileStudentDetails | null;
       };
 
       if (!payload.ok || !payload.profile) {
@@ -623,13 +996,61 @@ export function SuperadminUsersDirectory({
         profile: payload.profile,
         memberships: payload.memberships || [],
         parentProfile: payload.parentProfile,
+        studentProfile: payload.studentProfile,
       });
 
-      const primaryMembership = (payload.memberships || []).find(
-        (membership) => membership.isActive && membership.approvalStatus === "approved"
-      ) ?? (payload.memberships || [])[0] ?? null;
+      const isParentRole = (payload.memberships || []).some(
+        (membership) =>
+          membership.schoolRole === "parent" &&
+          membership.isActive &&
+          membership.approvalStatus === "approved"
+      );
+      if (isParentRole) {
+        setIsTransferContextLoading(true);
+        const transferResponse = await fetch(
+          `/api/admin/parent-child-transfer?sourceParentProfileId=${encodeURIComponent(user.id)}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session.access_token}`,
+            },
+          }
+        );
 
-      if (primaryMembership && roleAssignOptions.some((role) => role.value === primaryMembership.schoolRole)) {
+        if (transferResponse.ok) {
+          const transferPayload = (await transferResponse.json()) as {
+            ok: boolean;
+            linkedStudents?: ParentTransferStudent[];
+            candidateParents?: ParentTransferCandidate[];
+          };
+
+          if (transferPayload.ok) {
+            setTransferStudents(transferPayload.linkedStudents || []);
+            setSelectedTransferStudentIds([]);
+            setTransferCandidateParents(transferPayload.candidateParents || []);
+          }
+        }
+
+        setIsTransferContextLoading(false);
+      }
+
+      const sortMembershipsByPriority = (memberships: ProfileMembership[]) =>
+        memberships.sort((left, right) => {
+          const leftPriority = membershipRolePriority[left.schoolRole] ?? Number.MAX_SAFE_INTEGER;
+          const rightPriority = membershipRolePriority[right.schoolRole] ?? Number.MAX_SAFE_INTEGER;
+          return leftPriority - rightPriority;
+        });
+
+      const activeApprovedMemberships = (payload.memberships || [])
+        .filter((membership) => membership.isActive && membership.approvalStatus === "approved")
+        .sort(sortMembershipsByPriority);
+
+      // Fallback: if no active+approved, get highest-priority membership regardless of status
+      const allMembershipsSorted = (payload.memberships || []).sort(sortMembershipsByPriority);
+      const primaryMembership = activeApprovedMemberships[0] ?? allMembershipsSorted[0] ?? null;
+
+      if (primaryMembership) {
         setMembershipRoleValue(primaryMembership.schoolRole as typeof membershipRoleValue);
       }
     } catch (error) {
@@ -649,6 +1070,107 @@ export function SuperadminUsersDirectory({
     setProfileError(null);
     setIsSavingMembershipRole(false);
     setIsEditingMembershipRole(false);
+    setTransferFeedback(null);
+    setTransferRequestId(null);
+    setTransferConfirmPhrase("");
+    setTransferTargetParentSearch("");
+  };
+
+  const createTransferRequest = async (targetParentProfileId?: string) => {
+    const resolvedTargetParentId = targetParentProfileId || selectedTransferTargetParentId;
+    if (!selectedProfileUser || !resolvedTargetParentId || selectedTransferStudentIds.length === 0) {
+      setTransferFeedback({ tone: "error", message: transferLabels.error });
+      return;
+    }
+
+    setSelectedTransferTargetParentId(resolvedTargetParentId);
+
+    setIsCreatingTransferRequest(true);
+    setTransferFeedback(null);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error(transferLabels.error);
+      }
+
+      const response = await fetch("/api/admin/parent-child-transfer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "request",
+          sourceParentProfileId: selectedProfileUser.id,
+          targetParentProfileId: resolvedTargetParentId,
+          studentIds: selectedTransferStudentIds,
+          contactedCurrentParent: transferContactedCurrentParent,
+          contactedTargetParent: transferContactedTargetParent,
+          communicationNotes: transferNotes,
+        }),
+      });
+
+      const payload = (await response.json()) as { ok: boolean; transferRequestId?: string; reason?: string };
+      if (!response.ok || !payload.ok || !payload.transferRequestId) {
+        throw new Error(payload.reason || transferLabels.error);
+      }
+
+      setTransferRequestId(payload.transferRequestId);
+      setTransferFeedback({ tone: "success", message: transferLabels.requestCreated });
+    } catch (error) {
+      setTransferFeedback({ tone: "error", message: error instanceof Error ? error.message : transferLabels.error });
+    } finally {
+      setIsCreatingTransferRequest(false);
+    }
+  };
+
+  const confirmTransferRequest = async () => {
+    if (!transferRequestId) {
+      return;
+    }
+
+    setIsConfirmingTransfer(true);
+    setTransferFeedback(null);
+
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.access_token) {
+        throw new Error(transferLabels.error);
+      }
+
+      const response = await fetch("/api/admin/parent-child-transfer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "confirm",
+          transferRequestId,
+          confirmPhrase: transferConfirmPhrase,
+        }),
+      });
+
+      const payload = (await response.json()) as { ok: boolean; reason?: string };
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.reason || transferLabels.error);
+      }
+
+      setTransferFeedback({ tone: "success", message: transferLabels.success });
+      setTransferRequestId(null);
+      setTransferConfirmPhrase("");
+    } catch (error) {
+      setTransferFeedback({ tone: "error", message: error instanceof Error ? error.message : transferLabels.error });
+    } finally {
+      setIsConfirmingTransfer(false);
+    }
   };
 
   const saveMembershipRoleChanges = async () => {
@@ -765,6 +1287,7 @@ export function SuperadminUsersDirectory({
         profile: ProfileModalDetails["profile"];
         memberships?: ProfileMembership[];
         parentProfile?: ProfileParentDetails | null;
+        studentProfile?: ProfileStudentDetails | null;
       };
 
       const updatedProfile = payload.profile;
@@ -792,6 +1315,7 @@ export function SuperadminUsersDirectory({
           profile: updatedProfile,
           memberships: payload.memberships || previous.memberships,
           parentProfile: payload.parentProfile ?? previous.parentProfile,
+          studentProfile: payload.studentProfile ?? previous.studentProfile,
         };
       });
 
@@ -867,142 +1391,27 @@ export function SuperadminUsersDirectory({
       </div>
 
       {!isLoading && !hasError ? (
-        <div className="space-y-3 rounded-xl border border-[#e4eef7] bg-[#f5fbff] p-4">
-          <input
-            type="search"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
-            className="w-full rounded-xl border border-[#d6e8f6] bg-white px-4 py-2.5 text-sm text-[#003F60] outline-none transition focus:border-[#60A5FA]"
-          />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-                onClick={() => setStatusFilter("all")}
-                aria-label={statusAllLabel}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
-                  statusFilter === "all"
-                    ? "bg-[#36e7e1] text-white"
-                    : "border bg-white text-[#2b5876] hover:bg-white"
-                }`}
-              >
-                <Users className="h-4 w-4" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded bg-[#003F60] px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap z-10">
-                {statusAllLabel}
-              </div>
-            </div>
-
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-                onClick={() => setStatusFilter("active")}
-                aria-label={statusActiveLabel}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
-                  statusFilter === "active"
-                    ? "bg-[#36e7e1] text-white"
-                    : "border bg-white text-[#2b5876] hover:bg-white"
-                }`}
-              >
-                <ShieldCheck className="h-4 w-4" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded bg-[#003F60] px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap z-10">
-                {statusActiveLabel}
-              </div>
-            </div>
-
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-              onClick={() => setStatusFilter("inactive")}
-              aria-label={statusInactiveLabel}
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
-                statusFilter === "inactive"
-                  ? "bg-[#36e7e1] text-white"
-                  : "border bg-white text-[#2b5876] hover:bg-white"
-              }`}
-            >
-              <CircleOff className="h-4 w-4" />
-            </button>
-            <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded bg-[#003F60] px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap z-10">
-              {statusInactiveLabel}
-            </div>
-            </div>
-
-            <label className="ml-auto flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.8px] text-[#2b5876]">
-              {roleFilterLabel}
-              <select
-                value={roleFilter}
-                onChange={(event) => setRoleFilter(event.target.value)}
-                className="rounded-lg border border-[#d6e8f6] bg-white px-2 py-1.5 text-xs text-[#003F60]"
-              >
-                <option value="all">{roleAllLabel}</option>
-                {roleOptions.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-                onClick={() => setOrderFilter("newest")}
-                aria-label={orderNewestLabel}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
-                  orderFilter === "newest"
-                    ? "bg-[#fa4361] text-white"
-                    : "border bg-white text-[#2b5876] hover:bg-white"
-                }`}
-              >
-                <ArrowDownNarrowWide className="h-4 w-4" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded bg-[#003F60] px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap z-10">
-                {orderNewestLabel}
-              </div>
-            </div>
-
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-                onClick={() => setOrderFilter("oldest")}
-                aria-label={orderOldestLabel}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
-                  orderFilter === "oldest"
-                    ? "bg-[#fa4361] text-white"
-                    : "border bg-white text-[#2b5876] hover:bg-white"
-                }`}
-              >
-                <ArrowUpNarrowWide className="h-4 w-4" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded bg-[#003F60] px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap z-10">
-                {orderOldestLabel}
-              </div>
-            </div>
-
-            <div className="group relative inline-flex">
-              <button
-                type="button"
-                onClick={() => setOrderFilter("name")}
-                aria-label={orderNameLabel}
-                className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
-                  orderFilter === "name"
-                    ? "bg-[#fa4361] text-white"
-                    : "border bg-white text-[#2b5876] hover:bg-white"
-                }`}
-              >
-                <ArrowDownAZ className="h-4 w-4" />
-              </button>
-              <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded bg-[#003F60] px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap z-10">
-                {orderNameLabel}
-              </div>
-            </div>
-          </div>
-        </div>
+        <AppUsersDirectoryControls
+          searchTerm={searchTerm}
+          onSearchTermChange={setSearchTerm}
+          searchPlaceholder={searchPlaceholder}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          statusAllLabel={statusAllLabel}
+          statusActiveLabel={statusActiveLabel}
+          statusInactiveLabel={statusInactiveLabel}
+          roleFilterLabel={roleFilterLabel}
+          roleFilter={roleFilter}
+          onRoleFilterChange={setRoleFilter}
+          roleAllLabel={roleAllLabel}
+          roleOptions={roleOptions}
+          roleValueLabels={roleLabels}
+          orderFilter={orderFilter}
+          onOrderFilterChange={setOrderFilter}
+          orderNewestLabel={orderNewestLabel}
+          orderOldestLabel={orderOldestLabel}
+          orderNameLabel={orderNameLabel}
+        />
       ) : null}
 
       {isLoading ? <p className="text-sm text-[#2b5876]">{loadingLabel}</p> : null}
@@ -1206,9 +1615,12 @@ export function SuperadminUsersDirectory({
               </button>
             </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-3" aria-busy={isProfileDetailsLoading}>
               {isProfileDetailsLoading ? (
-                <p className="text-sm text-[#2b5876]">{loadingLabel}</p>
+                <div className="flex items-center gap-3 rounded-lg border border-[#e4eef7] bg-[#f5fbff] px-3 py-2">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#d6e8f6] border-t-[#fa4361]" />
+                  <p className="text-sm text-[#2b5876]">{loadingLabel}</p>
+                </div>
               ) : null}
 
               <label className="block">
@@ -1217,7 +1629,7 @@ export function SuperadminUsersDirectory({
                   type="text"
                   value={profileFormData.fullName}
                   onChange={(e) => setProfileFormData({ ...profileFormData, fullName: e.target.value })}
-                  disabled={isSavingProfile}
+                  disabled={isProfileFormBusy || !canManageSelectedProfile}
                   className="mt-1 w-full rounded-lg border border-[#d6e8f6] px-3 py-2 text-sm text-[#003F60] disabled:bg-[#f5fbff]"
                 />
               </label>
@@ -1233,7 +1645,8 @@ export function SuperadminUsersDirectory({
                   type="tel"
                   value={profileFormData.phone}
                   onChange={(e) => setProfileFormData({ ...profileFormData, phone: e.target.value })}
-                  disabled={isSavingProfile}
+                  placeholder={profileModalPhonePlaceholder}
+                  disabled={isProfileFormBusy || !canManageSelectedProfile}
                   className="mt-1 w-full rounded-lg border border-[#d6e8f6] px-3 py-2 text-sm text-[#003F60] disabled:bg-[#f5fbff]"
                 />
               </label>
@@ -1244,7 +1657,7 @@ export function SuperadminUsersDirectory({
                   type="date"
                   value={profileFormData.dateOfBirth}
                   onChange={(e) => setProfileFormData({ ...profileFormData, dateOfBirth: e.target.value })}
-                  disabled={isSavingProfile}
+                  disabled={isProfileFormBusy || !canManageSelectedProfile}
                   className="mt-1 w-full rounded-lg border border-[#d6e8f6] px-3 py-2 text-sm text-[#003F60] disabled:bg-[#f5fbff]"
                 />
               </label>
@@ -1254,7 +1667,7 @@ export function SuperadminUsersDirectory({
                 <select
                   value={profileFormData.preferredLocale}
                   onChange={(e) => setProfileFormData({ ...profileFormData, preferredLocale: e.target.value })}
-                  disabled={isSavingProfile}
+                  disabled={isProfileFormBusy || !canManageSelectedProfile}
                   className="mt-1 w-full rounded-lg border border-[#d6e8f6] px-3 py-2 text-sm text-[#003F60] disabled:bg-[#f5fbff]"
                 >
                   <option value="en-US">English</option>
@@ -1281,7 +1694,7 @@ export function SuperadminUsersDirectory({
                   <div className="sm:col-span-2">
                     <div className="flex items-center justify-between">
                       <p className="text-xs font-medium text-[#2b5876]">{membershipRoleEditLabel || authorizeModalRoleLabel}</p>
-                      {!isEditingMembershipRole ? (
+                      {!isEditingMembershipRole && canManageSelectedProfile ? (
                         <button
                           type="button"
                           onClick={() => setIsEditingMembershipRole(true)}
@@ -1310,7 +1723,7 @@ export function SuperadminUsersDirectory({
                                 | "guest"
                             )
                           }
-                          disabled={isSavingMembershipRole}
+                          disabled={isSavingMembershipRole || !canManageSelectedProfile}
                           className="mt-1 w-full rounded-lg border border-[#d6e8f6] bg-white px-3 py-2 text-sm text-[#003F60] disabled:bg-[#f5fbff]"
                         >
                           {roleAssignOptions.map((option) => (
@@ -1324,7 +1737,7 @@ export function SuperadminUsersDirectory({
                           <button
                             type="button"
                             onClick={() => setIsEditingMembershipRole(false)}
-                            disabled={isSavingMembershipRole}
+                            disabled={isSavingMembershipRole || !canManageSelectedProfile}
                             className="rounded-lg border border-[#d6e8f6] px-3 py-1.5 text-xs font-medium text-[#003F60] hover:bg-white disabled:opacity-60"
                           >
                             {profileModalCancel}
@@ -1332,7 +1745,7 @@ export function SuperadminUsersDirectory({
                           <button
                             type="button"
                             onClick={saveMembershipRoleChanges}
-                            disabled={isSavingMembershipRole}
+                            disabled={isSavingMembershipRole || !canManageSelectedProfile}
                             className="rounded-lg bg-[#36e7e1] px-3 py-1.5 text-xs font-semibold text-[#003F60] hover:bg-[#23d2cc] disabled:opacity-60"
                           >
                             {isSavingMembershipRole
@@ -1343,7 +1756,7 @@ export function SuperadminUsersDirectory({
                       </>
                     ) : (
                       <div className="mt-1 rounded-lg border border-[#d6e8f6] bg-white px-3 py-2 text-sm text-[#003F60]">
-                        {roleAssignOptions.find((option) => option.value === membershipRoleValue)?.label || "-"}
+                        {allRoleOptions.find((option) => option.value === membershipRoleValue)?.label || "-"}
                       </div>
                     )}
                   </div>
@@ -1370,6 +1783,235 @@ export function SuperadminUsersDirectory({
                   </div>
                 </div>
               ) : null}
+
+              {profileDetails?.studentProfile ? (
+                <div className="grid gap-3 rounded-lg border border-[#e4eef7] bg-[#f5fbff] p-3 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs font-medium text-[#2b5876]">{profileModalCurp}</p>
+                    <p className="text-sm text-[#003F60]">{profileDetails.studentProfile.curp || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-[#2b5876]">{profileModalStudentGradeLevel}</p>
+                    <p className="text-sm text-[#003F60]">{profileDetails.studentProfile.gradeLevel || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-[#2b5876]">{profileModalStudentBloodType}</p>
+                    <p className="text-sm text-[#003F60]">{profileDetails.studentProfile.bloodType || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-[#2b5876]">{profileModalStudentAllergies}</p>
+                    <p className="text-sm text-[#003F60]">{profileDetails.studentProfile.allergies || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-[#2b5876]">{profileModalStudentEnrollmentDate}</p>
+                    <p className="text-sm text-[#003F60]">{profileDetails.studentProfile.enrollmentDate || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-[#2b5876]">{profileModalStudentApprovalStatus}</p>
+                    <p className="text-sm text-[#003F60]">{profileDetails.studentProfile.approvalStatus || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-[#2b5876]">{profileModalStudentOnboardingStatus}</p>
+                    <p className="text-sm text-[#003F60]">{profileDetails.studentProfile.onboardingStatus || "-"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-[#2b5876]">{profileModalStudentDataAuthorizationSignedAt}</p>
+                    <p className="text-sm text-[#003F60]">{profileDetails.studentProfile.dataAuthorizationSignedAt || "-"}</p>
+                  </div>
+                </div>
+              ) : null}
+
+              {profileDetails?.memberships.some((membership) => membership.schoolRole === "parent") && transferStudents.length > 0 ? (
+                <div className="space-y-3 rounded-lg border border-[#e4eef7] bg-[#f5fbff] p-3">
+                  <h3 className="font-['Sora',Helvetica,Arial,sans-serif] text-sm font-bold text-[#003F60]">
+                    {transferLabels.sectionTitle}
+                  </h3>
+
+                  {isTransferContextLoading ? (
+                    <p className="text-sm text-[#2b5876]">{loadingLabel}</p>
+                  ) : (
+                    <>
+                      <label className="block">
+                        <span className="text-xs font-medium text-[#2b5876]">{transferLabels.targetParent}</span>
+                        <input
+                          type="search"
+                          value={transferTargetParentSearch}
+                          onChange={(event) => {
+                            setTransferTargetParentSearch(event.target.value);
+                            setSelectedTransferTargetParentId("");
+                          }}
+                          placeholder={transferLabels.targetParentSearchPlaceholder}
+                          aria-label={transferLabels.targetParent}
+                          disabled={isCreatingTransferRequest || isConfirmingTransfer || Boolean(transferRequestId)}
+                          className="mt-1 w-full rounded-lg border border-[#d6e8f6] bg-white px-3 py-2 text-sm text-[#003F60] disabled:bg-[#f5fbff]"
+                        />
+
+                        {transferTargetSearchStatus ? (
+                          <p className="mt-2 text-xs text-[#2b5876]">{transferTargetSearchStatus}</p>
+                        ) : null}
+                      </label>
+
+                      {debouncedTransferTargetParentSearch.trim().length > 0 && filteredTransferCandidateParents.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium text-[#2b5876]">{transferLabels.matchesTitle}</p>
+                          <div className="overflow-x-auto rounded-lg border border-[#d6e8f6] bg-white">
+                            <table className="min-w-full text-sm">
+                              <thead className="bg-[#f5fbff] text-left text-xs text-[#2b5876]">
+                                <tr>
+                                  <th className="px-3 py-2 font-semibold">{transferLabels.matchesParentColumn}</th>
+                                  <th className="px-3 py-2 font-semibold">{transferLabels.matchesEmailColumn}</th>
+                                  <th className="px-3 py-2 font-semibold" />
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filteredTransferCandidateParents.slice(0, 20).map((candidate) => {
+                                  const candidateLabel = candidate.fullName || candidate.email || candidate.id;
+                                  return (
+                                    <tr key={candidate.id} className="border-t border-[#eef4fa]">
+                                      <td className="px-3 py-2 text-[#003F60]">{candidateLabel}</td>
+                                      <td className="px-3 py-2 text-[#2b5876]">{candidate.email || "-"}</td>
+                                      <td className="px-3 py-2 text-right">
+                                        <button
+                                          type="button"
+                                          onClick={() => void createTransferRequest(candidate.id)}
+                                          disabled={
+                                            isCreatingTransferRequest ||
+                                            isConfirmingTransfer ||
+                                            Boolean(transferRequestId) ||
+                                            selectedTransferStudentIds.length === 0
+                                          }
+                                          className="rounded-lg bg-[#36e7e1] px-3 py-1.5 text-xs font-semibold text-[#003F60] disabled:opacity-60"
+                                        >
+                                          {isCreatingTransferRequest ? transferLabels.creatingRequest : transferLabels.matchesAction}
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ) : null}
+
+                      {transferCandidateParents.length === 0 ? (
+                        <p className="text-xs text-[#2b5876]">{transferLabels.emptyCandidates}</p>
+                      ) : null}
+
+                      <div>
+                        <p className="text-xs font-medium text-[#2b5876]">{transferLabels.students}</p>
+                        <p className="mt-1 text-xs text-[#2b5876]">{transferLabels.studentsHint}</p>
+                        <div className="mt-1 space-y-1">
+                          {transferStudents.map((student) => (
+                            <label key={student.id} className="flex items-start gap-2 rounded bg-white px-2 py-1.5 text-sm text-[#003F60]">
+                              <input
+                                type="checkbox"
+                                checked={selectedTransferStudentIds.includes(student.id)}
+                                onChange={(event) => {
+                                  setSelectedTransferStudentIds((previous) => {
+                                    if (event.target.checked) {
+                                      return Array.from(new Set([...previous, student.id]));
+                                    }
+
+                                    return previous.filter((id) => id !== student.id);
+                                  });
+                                }}
+                                disabled={isCreatingTransferRequest || isConfirmingTransfer || Boolean(transferRequestId)}
+                                className="mt-0.5"
+                              />
+                              <span>
+                                {student.fullName}
+                                {student.gradeLevel ? ` (${student.gradeLevel})` : ""}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <label className="flex items-center gap-2 rounded bg-white px-2 py-1.5 text-sm text-[#003F60]">
+                          <input
+                            type="checkbox"
+                            checked={transferContactedCurrentParent}
+                            onChange={(event) => setTransferContactedCurrentParent(event.target.checked)}
+                            disabled={isCreatingTransferRequest || isConfirmingTransfer || Boolean(transferRequestId)}
+                          />
+                          {transferLabels.contactCurrentParent}
+                        </label>
+                        <label className="flex items-center gap-2 rounded bg-white px-2 py-1.5 text-sm text-[#003F60]">
+                          <input
+                            type="checkbox"
+                            checked={transferContactedTargetParent}
+                            onChange={(event) => setTransferContactedTargetParent(event.target.checked)}
+                            disabled={isCreatingTransferRequest || isConfirmingTransfer || Boolean(transferRequestId)}
+                          />
+                          {transferLabels.contactTargetParent}
+                        </label>
+                      </div>
+
+                      <label className="block">
+                        <span className="text-xs font-medium text-[#2b5876]">{transferLabels.notes}</span>
+                        <textarea
+                          value={transferNotes}
+                          onChange={(event) => setTransferNotes(event.target.value)}
+                          disabled={isCreatingTransferRequest || isConfirmingTransfer || Boolean(transferRequestId)}
+                          className="mt-1 min-h-[70px] w-full rounded-lg border border-[#d6e8f6] bg-white px-3 py-2 text-sm text-[#003F60] disabled:bg-[#f5fbff]"
+                        />
+                      </label>
+
+                      {!transferRequestId ? (
+                        <button
+                          type="button"
+                          onClick={() => void createTransferRequest()}
+                          disabled={
+                            isCreatingTransferRequest ||
+                            selectedTransferStudentIds.length === 0 ||
+                            !selectedTransferTargetParentId
+                          }
+                          className="rounded-lg bg-[#36e7e1] px-3 py-2 text-sm font-semibold text-[#003F60] disabled:opacity-60"
+                        >
+                          {isCreatingTransferRequest ? transferLabels.creatingRequest : transferLabels.createRequest}
+                        </button>
+                      ) : (
+                        <div className="space-y-2 rounded border border-[#d6e8f6] bg-white p-2.5">
+                          <label className="block">
+                            <span className="text-xs font-medium text-[#2b5876]">{transferLabels.confirmPhrase}</span>
+                            <input
+                              type="text"
+                              value={transferConfirmPhrase}
+                              onChange={(event) => setTransferConfirmPhrase(event.target.value)}
+                              disabled={isConfirmingTransfer}
+                              className="mt-1 w-full rounded-lg border border-[#d6e8f6] px-3 py-2 text-sm text-[#003F60]"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={confirmTransferRequest}
+                            disabled={isConfirmingTransfer || transferConfirmPhrase !== "TRANSFER"}
+                            className="rounded-lg bg-[#fa4361] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                          >
+                            {isConfirmingTransfer ? transferLabels.confirmingButton : transferLabels.confirmButton}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {transferFeedback ? (
+                    <p className={transferFeedback.tone === "error" ? "text-sm text-[#b51d3a]" : "text-sm text-[#0f5132]"}>
+                      {transferFeedback.message}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {profileDetails?.memberships.some((membership) => membership.schoolRole === "parent") &&
+              !isTransferContextLoading &&
+              transferStudents.length === 0 ? (
+                <div className="rounded-lg border border-[#e4eef7] bg-[#f5fbff] px-3 py-2">
+                  <p className="text-sm text-[#2b5876]">{transferLabels.emptyStudents}</p>
+                </div>
+              ) : null}
             </div>
 
             {profileError ? (
@@ -1381,7 +2023,7 @@ export function SuperadminUsersDirectory({
                 <button
                   type="button"
                   onClick={closeProfileModal}
-                  disabled={isSavingProfile}
+                  disabled={isProfileFormBusy}
                   className="rounded-lg border border-[#d6e8f6] px-4 py-2 text-sm font-medium text-[#003F60] hover:bg-[#f5fbff] disabled:opacity-60"
                 >
                   {profileModalCancel}
@@ -1389,30 +2031,30 @@ export function SuperadminUsersDirectory({
                 <button
                   type="button"
                   onClick={saveProfileChanges}
-                  disabled={isSavingProfile}
+                  disabled={isProfileFormBusy || !canManageSelectedProfile}
                   className="rounded-lg bg-[#36e7e1] px-4 py-2 text-sm font-semibold text-[#003F60] hover:bg-[#23d2cc] disabled:opacity-60"
                 >
                   {isSavingProfile ? profileModalSaving : profileModalSave}
                 </button>
               </div>
 
-              {!showDeactivateConfirm ? (
+              {canManageSelectedProfile && !showDeactivateConfirm ? (
                 <button
                   type="button"
                   onClick={() => setShowDeactivateConfirm(true)}
-                  disabled={isSavingProfile}
+                  disabled={isProfileFormBusy}
                   className="rounded-lg border border-[#fa4361] px-4 py-2 text-sm font-medium text-[#fa4361] hover:bg-[#fde8eb] disabled:opacity-60"
                 >
                   {profileModalDeactivate}
                 </button>
-              ) : (
+              ) : canManageSelectedProfile ? (
                 <div className="space-y-2 rounded-lg bg-[#FFF3F5] p-3">
                   <p className="text-sm text-[#2b5876]">{profileModalDeactivateConfirm}</p>
                   <div className="flex gap-2">
                     <button
                       type="button"
                       onClick={() => setShowDeactivateConfirm(false)}
-                      disabled={isSavingProfile}
+                      disabled={isProfileFormBusy}
                       className="flex-1 rounded-lg border border-[#d6e8f6] px-3 py-1.5 text-xs font-medium text-[#003F60] hover:bg-[#f5fbff] disabled:opacity-60"
                     >
                       Cancel
@@ -1420,14 +2062,14 @@ export function SuperadminUsersDirectory({
                     <button
                       type="button"
                       onClick={deactivateUser}
-                      disabled={isSavingProfile}
+                      disabled={isProfileFormBusy}
                       className="flex-1 rounded-lg bg-[#fa4361] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#e63450] disabled:opacity-60"
                     >
                       {profileModalDeactivateButton}
                     </button>
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>

@@ -73,6 +73,9 @@
 - Marketing-site-specific composites go in `components/marketing/`.
 - Layout wrappers (Navbar, Footer) go in `components/layout/`.
 - Component names use the `App` prefix: `AppButton`, `AppCard`, etc.
+- For repeated dashboard modules (search/filter/table/form blocks), do not duplicate feature markup across dashboards.
+   - Reuse existing shared components where possible.
+   - If no good fit exists, extract shared presentation into `components/ui/*` and keep role-specific behavior in feature wrappers.
 
 ### Marketing Section Modules
 
@@ -142,6 +145,7 @@ Keep `docs/` in sync as you work:
 - [ ] New implementations have unit tests
 - [ ] i18n keys added to both `en-US.ts` and `es-MX.ts`
 - [ ] Relevant docs updated
+- [ ] Reuse note added (what shared UI component was reused, or what new shared component was extracted and why)
 - [ ] `npm run lint` passes
 - [ ] `npm test` passes
 - [ ] `npm run build` succeeds

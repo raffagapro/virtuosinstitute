@@ -29,10 +29,18 @@ export function AppDashboardSidebar({
   items,
   pendingUsersBadgeLabel,
 }: AppDashboardSidebarProps) {
+  const shouldEnablePendingBadge = (item: AppDashboardSidebarItem) => {
+    if (typeof item.showPendingAuthBadge === "boolean") {
+      return item.showPendingAuthBadge;
+    }
+
+    return item.href.endsWith("/users");
+  };
+
   const pathname = usePathname() ?? "";
   const [pendingUsersCount, setPendingUsersCount] = useState<number | null>(null);
   const shouldLoadPendingAuthCount = useMemo(
-    () => items.some((item) => item.showPendingAuthBadge),
+    () => items.some((item) => shouldEnablePendingBadge(item)),
     [items]
   );
   const matchingHrefs = items
@@ -85,30 +93,16 @@ export function AppDashboardSidebar({
       setPendingUsersCount(nextPendingCount);
     };
 
-    const handleWindowFocus = () => {
-      void fetchPendingUsersCount();
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        void fetchPendingUsersCount();
-      }
-    };
-
     const handleRefreshEvent = () => {
       void fetchPendingUsersCount();
     };
 
     void fetchPendingUsersCount();
 
-    window.addEventListener("focus", handleWindowFocus);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener(SUPERADMIN_PENDING_USERS_REFRESH_EVENT, handleRefreshEvent as EventListener);
 
     return () => {
       isCancelled = true;
-      window.removeEventListener("focus", handleWindowFocus);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener(SUPERADMIN_PENDING_USERS_REFRESH_EVENT, handleRefreshEvent as EventListener);
     };
   }, [pathname, shouldLoadPendingAuthCount]);
@@ -118,7 +112,7 @@ export function AppDashboardSidebar({
       <nav className="flex flex-col gap-1" aria-label={ariaLabel}>
         {items.map((item) => {
           const isActive = activeHref === item.href;
-          const shouldShowBadge = item.showPendingAuthBadge && (pendingUsersCount ?? 0) > 0;
+          const shouldShowBadge = shouldEnablePendingBadge(item) && (pendingUsersCount ?? 0) > 0;
           const pendingCountValue = pendingUsersCount ?? 0;
           const pendingCountText = pendingCountValue > 99 ? "99+" : String(pendingCountValue);
           return (

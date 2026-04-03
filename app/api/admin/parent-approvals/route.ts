@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { defaultLocale, resolveLocale, type Locale } from "@/lib/i18n";
 import { sendInviteEmail, InviteMailerConfigError } from "@/lib/invite-mailer";
 import { buildParentApprovedEmail } from "@/lib/invite-templates/parent-approved";
+import { canAssignRole, canManageTargetRole, getEffectiveManagementRole, type ActorScope } from "@/lib/role-assignment-policy";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase";
 import type { ApprovalStatus } from "@/lib/platform-onboarding";
 
@@ -93,9 +94,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "invalid-input" }, { status: 400 });
   }
 
-  let adminSupabase: any;
+  let adminSupabase: ReturnType<typeof getSupabaseAdminClient>;
   try {
-    adminSupabase = getSupabaseAdminClient() as any;
+    adminSupabase = getSupabaseAdminClient();
   } catch {
     return NextResponse.json({ ok: false, reason: "service-role-missing" }, { status: 503 });
   }
@@ -106,13 +107,49 @@ export async function POST(request: Request) {
     .eq("id", actorData.user.id)
     .maybeSingle();
 
-  if (actorProfileError || (actorProfile as { platform_role: string | null } | null)?.platform_role !== "superadmin") {
+  if (actorProfileError) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
+  }
+
+  const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+
+  let isOwner = false;
+  let isCoordination = false;
+
+  if (!isSuperadmin) {
+    const { data: actorMembershipRows, error: actorMembershipError } = await adminSupabase
+      .from("school_memberships")
+      .select("school_role")
+      .eq("profile_id", actorData.user.id)
+      .eq("is_active", true)
+      .eq("approval_status", "approved");
+
+    if (actorMembershipError) {
+      return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
+    }
+
+    const actorRoles = (actorMembershipRows as Array<{ school_role: string }> | null) ?? [];
+    isOwner = actorRoles.some((role) => role.school_role === "school_owner");
+    isCoordination = actorRoles.some((role) => role.school_role === "coordination");
+  }
+
+  if (!isSuperadmin && !isOwner && !isCoordination) {
+    return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
+  }
+
+  const actorScope: ActorScope = isSuperadmin
+    ? "superadmin"
+    : isOwner
+      ? "school_owner"
+      : "coordination";
+
+  if (payload.status === "approved" && payload.assignedRole && !canAssignRole(actorScope, payload.assignedRole)) {
+    return NextResponse.json({ ok: false, reason: "forbidden-assigned-role" }, { status: 403 });
   }
 
   const { data: targetProfile, error: targetProfileError } = await adminSupabase
     .from("profiles")
-    .select("email, full_name, preferred_locale")
+    .select("email, full_name, preferred_locale, platform_role")
     .eq("id", payload.profileId)
     .maybeSingle();
 
@@ -120,7 +157,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "target-profile-read-failed" }, { status: 500 });
   }
 
+  if ((targetProfile as { platform_role: string | null } | null)?.platform_role === "superadmin") {
+    return NextResponse.json({ ok: false, reason: "forbidden-target" }, { status: 403 });
+  }
+
+  const { data: targetMembershipRows, error: targetMembershipReadError } = await adminSupabase
+    .from("school_memberships")
+    .select("school_role, is_active, approval_status")
+    .eq("profile_id", payload.profileId);
+
+  if (targetMembershipReadError) {
+    return NextResponse.json({ ok: false, reason: "membership-read-failed" }, { status: 500 });
+  }
+
+  const targetRole = getEffectiveManagementRole({
+    platformRole: (targetProfile as { platform_role: string | null } | null)?.platform_role ?? null,
+    memberships: ((targetMembershipRows as Array<{ school_role: string; is_active: boolean; approval_status: string }> | null) ?? []),
+  });
+
+  if (!canManageTargetRole(actorScope, targetRole)) {
+    return NextResponse.json({ ok: false, reason: "forbidden-target" }, { status: 403 });
+  }
+
   if (payload.status === "approved") {
+    const { error: deactivateOtherMembershipsError } = await adminSupabase
+      .from("school_memberships")
+      .update({ is_active: false })
+      .eq("profile_id", payload.profileId)
+      .eq("is_active", true);
+
+    if (deactivateOtherMembershipsError) {
+      return NextResponse.json({ ok: false, reason: "membership-update-failed" }, { status: 500 });
+    }
+
     const { data: pendingMembershipRows, error: pendingMembershipReadError } = await adminSupabase
       .from("school_memberships")
       .select("id, school_role")

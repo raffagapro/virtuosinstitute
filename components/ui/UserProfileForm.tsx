@@ -14,14 +14,6 @@ interface ProfileData {
   platformRole: string | null;
 }
 
-interface ParentProfileData {
-  curp: string;
-  rfc: string | null;
-  profession: string | null;
-  invoiceRequired: boolean;
-  dateOfBirth: string | null;
-}
-
 interface UserProfileFormProps {
   isParent: boolean;
   locale: Locale;
@@ -31,6 +23,7 @@ interface UserProfileFormProps {
     fullName: string;
     email: string;
     phone: string;
+    phonePlaceholder?: string;
     preferredLocale: string;
     curp: string;
     rfc: string;
@@ -53,7 +46,6 @@ export function UserProfileForm({ isParent, locale, labels }: UserProfileFormPro
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [parentProfile, setParentProfile] = useState<ParentProfileData | null>(null);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -104,7 +96,6 @@ export function UserProfileForm({ isParent, locale, labels }: UserProfileFormPro
             preferredLocale: data.profile.preferredLocale,
           }));
           if (data.parentProfile) {
-            setParentProfile(data.parentProfile);
             setFormData((prev) => ({
               ...prev,
               curp: data.parentProfile.curp,
@@ -186,9 +177,6 @@ export function UserProfileForm({ isParent, locale, labels }: UserProfileFormPro
       const data = await response.json();
       if (data.ok) {
         setProfile(data.profile);
-        if (data.parentProfile) {
-          setParentProfile(data.parentProfile);
-        }
 
         window.dispatchEvent(
           new CustomEvent("app:profile-updated", {
@@ -287,6 +275,7 @@ export function UserProfileForm({ isParent, locale, labels }: UserProfileFormPro
             name="phone"
             value={formData.phone}
             onChange={handleChange}
+            placeholder={labels.phonePlaceholder}
             disabled={!isEditing}
             className="mt-2 w-full rounded-lg border border-[#d6e8f6] px-4 py-2 text-sm text-[#003F60] disabled:bg-[#f5fbff] disabled:text-[#999]"
           />

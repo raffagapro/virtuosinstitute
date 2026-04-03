@@ -81,14 +81,26 @@
     "014_required_profile_fields.sql": {
       "readiness": "ready",
       "local": "not-applied",
-      "linked": "not-applied",
+      "linked": "applied",
       "notes": "Reviewed and ready to push"
     },
     "015_profiles_date_of_birth.sql": {
       "readiness": "ready",
       "local": "not-applied",
-      "linked": "not-applied",
+      "linked": "applied",
       "notes": "Reviewed and ready to push"
+    },
+    "016_parent_child_transfer_requests.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Adds two-step parent-child transfer requests with audit fields"
+    },
+    "017_single_active_membership_per_profile.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Enforces one active school membership role per profile, deactivates duplicate active rows, and removes active school memberships from superadmin profiles"
     }
   }
 }

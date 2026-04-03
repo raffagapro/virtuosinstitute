@@ -137,7 +137,12 @@
   - [x] Missing server credentials fail gracefully with setup message (no unhandled env crash)
   - [x] Account-created review email is sent on first onboarding bootstrap when mailer is configured
   - [x] Approval email is sent when staff approves account access when mailer is configured
-  - [ ] Parent child-registration flow unlock after approved status
+  - [x] Parent child-registration flow unlock after approved status
+    - [x] `GET /api/parent/children` — list children linked to authenticated parent via `student_guardians`
+    - [x] `POST /api/parent/children` — register new child (creates `students` row + `student_guardians` link)
+    - [x] `ParentChildrenPage` client component — list, add-child inline form, status badges
+    - [x] `app/platfrom/dashboard/parent/children/page.tsx` SSR wrapper passing i18n labels
+    - [x] Children sidebar link added to parent dashboard layout
   - [ ] Staff child-record approval queue UI and actions
 
 ### Single-School Refactor (Option 2)
@@ -211,13 +216,16 @@
 ## Phase 5 — Companion App MVP (Operations)
 
 ### Superadmin Platform Dashboard
-- [~] Global user directory with id, role, status, and search/filter controls (single-school scope)
+- [x] Global user directory with id, role, status, and search/filter controls (single-school scope)
   - [x] Added pending-status authorization modal from users directory with role assignment and approve action
   - [x] Added two-step parent-child transfer flow from parent profile modal (request + explicit confirmation phrase)
+  - [x] Added profile edit modal (full name, phone, DOB, locale, CURP, RFC, profession, invoice) from users directory
+  - [x] Added membership role edit/update from profile modal (actor-scoped, guarded by canManageSelectedProfile)
+  - [x] Added deactivate user with confirm dialog from profile modal (guarded by canManageSelectedProfile)
+  - [x] Superadmin and staff users directory share the same `SuperadminUsersDirectory` component via `/platfrom/dashboard/staff/users`
 - [x] Add superadmin Dev tab for seeded email-account creation in QA environments
   - [x] Added superadmin Dev tool to reset password for existing email users by account email
   - [x] Updated dev password reset flow to searchable email selection (debounced search + match table + explicit selection)
-- [ ] Activate/deactivate users and inspect role assignments
 - [ ] Platform usage metrics and storage/database usage visibility
 - [ ] Mailer template management for editing and creating email templates
 
@@ -237,9 +245,14 @@
   - [x] Enforced single active school membership role per profile in API reassignment/approval flows
   - [x] Added DB invariant migration to prevent multiple active role rows per profile
   - [x] Blocked lower-role actors from editing, deactivating, approving, or reassigning higher-role accounts
-- [ ] School owner user-management panel for school staff role assignment
-- [ ] Staff directory search with role-aware visibility and edit restrictions
-- [ ] Parent approval queue and child-onboarding approval queue
+- [x] School owner user-management panel for school staff role assignment
+  - [x] Staff users directory page at `/platfrom/dashboard/staff/users` reuses `SuperadminUsersDirectory` scoped by actor
+- [x] Staff directory search with role-aware visibility and edit restrictions
+  - [x] Scoped `/api/admin/users-directory` list results by actor manageability (superadmin/owner/coordination visibility boundaries)
+  - [x] Profile modal edit and deactivate actions are gated by `canManageSelectedProfile` (actor-aware)
+- [x] Parent approval queue
+  - [x] Approve/reject pending parent access requests via authorize modal inside users directory (role assignment + approve/reject with `POST /api/admin/parent-approvals`)
+- [ ] Child-onboarding approval queue (blocked: child registration flow not yet built)
 
 ### Student Operations
 - [ ] Student record status board (documents complete, tuition standing, approvals)

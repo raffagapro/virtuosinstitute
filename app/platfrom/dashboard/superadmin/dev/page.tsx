@@ -8,6 +8,21 @@ export default function SuperadminDevToolsPage() {
     <SuperadminDevTools
       title={translate(locale, "platform.dashboard.superadmin.dev.title")}
       subtitle={translate(locale, "platform.dashboard.superadmin.dev.subtitle")}
+      passwordResetTitle={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.title")}
+      passwordResetSubtitle={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.subtitle")}
+      passwordResetSubmitLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.submit")}
+      passwordResetSubmittingLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.submitting")}
+      passwordResetSuccessLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.success")}
+      passwordResetPasswordLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.password")}
+      passwordResetPasswordPlaceholder={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.passwordPlaceholder")}
+      passwordResetSearchEmailLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.searchEmail")}
+      passwordResetSearchEmailPlaceholder={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.searchEmailPlaceholder")}
+      passwordResetSearchingLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.searching")}
+      passwordResetNoMatchesLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.noMatches")}
+      passwordResetMatchesTitle={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.matchesTitle")}
+      passwordResetMatchesEmailColumnLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.matchesEmailColumn")}
+      passwordResetMatchesActionLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.matchesAction")}
+      passwordResetSelectedLabel={translate(locale, "platform.dashboard.superadmin.dev.passwordReset.selected")}
       quickUnauthorizedTitle={translate(locale, "platform.dashboard.superadmin.dev.quick.title")}
       quickUnauthorizedSubtitle={translate(locale, "platform.dashboard.superadmin.dev.quick.subtitle")}
       quickUnauthorizedSubmitLabel={translate(locale, "platform.dashboard.superadmin.dev.quick.submit")}
@@ -32,6 +47,7 @@ export default function SuperadminDevToolsPage() {
       genericErrorLabel={translate(locale, "platform.dashboard.superadmin.dev.feedback.genericError")}
       emailAuthDisabledErrorLabel={translate(locale, "platform.dashboard.superadmin.dev.feedback.emailAuthDisabled")}
       forbiddenErrorLabel={translate(locale, "platform.dashboard.superadmin.dev.feedback.forbidden")}
+      emailNotFoundErrorLabel={translate(locale, "platform.dashboard.superadmin.dev.feedback.emailNotFound")}
       duplicateEmailErrorLabel={translate(locale, "platform.dashboard.superadmin.dev.feedback.duplicateEmail")}
       serviceRoleMissingErrorLabel={translate(locale, "platform.dashboard.superadmin.dev.feedback.serviceRoleMissing")}
       invalidInputErrorLabel={translate(locale, "platform.dashboard.superadmin.dev.feedback.invalidInput")}

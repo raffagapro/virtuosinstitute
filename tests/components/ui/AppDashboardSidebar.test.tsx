@@ -138,4 +138,42 @@ describe("AppDashboardSidebar", () => {
 
     expect(await screen.findByText("2")).toBeInTheDocument();
   });
+
+  it("enables pending authorization badge by default for users links", async () => {
+    mockGetSession.mockResolvedValue({
+      data: {
+        session: {
+          access_token: "token",
+        },
+      },
+    });
+
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        users: [
+          { hasPendingAuthorization: true },
+          { hasPendingAuthorization: false },
+        ],
+      }),
+    });
+
+    render(
+      <AppDashboardSidebar
+        ariaLabel="Pages"
+        pendingUsersBadgeLabel="Pending users to authorize: {count}"
+        items={[
+          { href: "/platfrom/dashboard/staff", label: "Home" },
+          {
+            href: "/platfrom/dashboard/staff/users",
+            label: "Users directory",
+          },
+        ]}
+      />
+    );
+
+    expect(await screen.findByText("1")).toBeInTheDocument();
+    expect(screen.getByText("Pending users to authorize: 1")).toHaveClass("sr-only");
+  });
 });

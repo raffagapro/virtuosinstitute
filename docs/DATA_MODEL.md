@@ -112,6 +112,8 @@ Metadata for identity-proof files attached to parents, staff, and authorized pic
 #### `school_memberships`
 Maps user profiles to role assignments in global single-school mode.
 
+- Invariant: each profile can have only one active school membership at a time (`is_active = true`). Historical membership rows are preserved as inactive records.
+
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Membership id |
@@ -165,11 +167,34 @@ Join table between parents and students.
 |---|---|---|
 | `id` | `uuid` PK | Relationship id |
 | `student_id` | `uuid` FK -> `students.id` | Required |
-| `guardian_profile_id` | `uuid` FK -> `profiles.id` | Parent profile |
-| `relationship` | `text` nullable | Example: `mother`, `father`, `tutor` |
+| `parent_profile_id` | `uuid` FK -> `parent_profiles.profile_id` | Parent profile |
+| `relationship_type` | `text` | Example: `mother`, `father`, `tutor` |
 | `is_primary_contact` | `boolean` | Default `false` |
-| `link_status` | `text` | `pending`, `active`, `inactive` |
+| `is_legal_guardian` | `boolean` | Default `false` |
+| `link_status` | `text` | `pending`, `approved`, `rejected`, `revoked` |
+| `approved_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Staff/superadmin approver |
+| `approved_at` | `timestamptz` nullable | Approval timestamp |
 | `created_at` | `timestamptz` | Default `now()` |
+| `updated_at` | `timestamptz` | Updated by trigger |
+
+#### `parent_child_transfer_requests`
+Audited two-step parent transfer workflow before moving student guardian links.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Transfer request id |
+| `source_parent_profile_id` | `uuid` FK -> `profiles.id` | Current parent account |
+| `target_parent_profile_id` | `uuid` FK -> `profiles.id` | New parent account |
+| `student_ids` | `uuid[]` | One or more selected students |
+| `status` | `text` | `pending_confirmation`, `confirmed`, `cancelled`, `rejected` |
+| `initiated_by_profile_id` | `uuid` FK -> `profiles.id` | Actor that created the request |
+| `confirmed_by_profile_id` | `uuid` FK -> `profiles.id` nullable | Actor that confirmed transfer |
+| `contacted_current_parent` | `boolean` | Contact log flag |
+| `contacted_target_parent` | `boolean` | Contact log flag |
+| `communication_notes` | `text` nullable | Notes about outreach/verification |
+| `confirmed_at` | `timestamptz` nullable | Confirmation timestamp |
+| `created_at` | `timestamptz` | Default `now()` |
+| `updated_at` | `timestamptz` | Updated by trigger |
 
 #### `student_documents`
 Tracks required/received enrollment documents for each student.

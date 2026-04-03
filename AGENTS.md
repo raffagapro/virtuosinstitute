@@ -15,6 +15,16 @@ When implementing UI changes, always reuse existing components and patterns firs
 - For complex feature logic that should not leak into primitives, wrap library components in feature-level wrapper components.
 - Do not duplicate card/list/table/form presentation markup across pages when a shared primitive or wrapper can be used.
 
+## Reuse Compliance Gate (Required Before Merge)
+
+- For any new feature UI that resembles existing dashboard modules (search bars, filter rows, directory/table blocks, modal forms), contributors must either:
+	- reuse an existing `components/ui/*` primitive or feature wrapper, or
+	- extract the repeated presentation markup into `components/ui/*` first and consume it from feature-level wrappers.
+- PRs must include a short reuse note stating:
+	- which existing component was reused, or
+	- why extraction was required and which new shared component was introduced.
+- If functionality differs by dashboard/role, keep one shared component API and reduce/expand behavior via props or wrapper-level policy instead of cloning markup.
+
 ## Regression Safety
 
 - Add Storybook stories for any new shared primitive or meaningful primitive extension.

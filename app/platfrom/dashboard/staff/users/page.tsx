@@ -1,13 +1,13 @@
-import { defaultLocale, translate } from "@/lib/i18n";
 import { SuperadminUsersDirectory } from "@/app/platfrom/dashboard/superadmin/users/SuperadminUsersDirectory";
+import { defaultLocale, translate } from "@/lib/i18n";
 
-export default function SuperadminUsersDirectoryPage() {
+export default function StaffUsersDirectoryPage() {
   const locale = defaultLocale;
 
   return (
     <SuperadminUsersDirectory
-      title={translate(locale, "platform.dashboard.superadmin.usersDirectory.title")}
-      subtitle={translate(locale, "platform.dashboard.superadmin.usersDirectory.subtitle")}
+      title={translate(locale, "platform.dashboard.staff.usersDirectory.title")}
+      subtitle={translate(locale, "platform.dashboard.staff.usersDirectory.subtitle")}
       searchPlaceholder={translate(locale, "platform.dashboard.superadmin.usersDirectory.searchPlaceholder")}
       emptyLabel={translate(locale, "platform.dashboard.superadmin.usersDirectory.empty")}
       loadingLabel={translate(locale, "platform.dashboard.superadmin.usersDirectory.loading")}
@@ -136,6 +136,7 @@ export default function SuperadminUsersDirectoryPage() {
       statusApprovedLabel={translate(locale, "platform.status.approved")}
       statusRejectedLabel={translate(locale, "platform.status.rejected")}
       statusSuspendedLabel={translate(locale, "platform.status.suspended")}
+      usersDirectoryApiPath="/api/admin/users-directory"
     />
   );
 }

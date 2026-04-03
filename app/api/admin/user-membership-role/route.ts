@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
+import {
+  canAssignRole,
+  canManageTargetRole,
+  getEffectiveManagementRole,
+  type ActorScope,
+  type SchoolRole,
+} from "@/lib/role-assignment-policy";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase";
-
-type SchoolRole = "school_owner" | "direction" | "coordination" | "teacher" | "clerk" | "parent" | "student" | "guest";
 
 interface ReassignMembershipPayload {
   profileId?: string;
@@ -50,9 +55,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "invalid-session" }, { status: 401 });
   }
 
-  let adminSupabase: any;
+  let adminSupabase: ReturnType<typeof getSupabaseAdminClient>;
   try {
-    adminSupabase = getSupabaseAdminClient() as any;
+    adminSupabase = getSupabaseAdminClient();
   } catch {
     return NextResponse.json({ ok: false, reason: "service-role-missing" }, { status: 503 });
   }
@@ -70,6 +75,7 @@ export async function POST(request: Request) {
   const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   let isOwner = false;
+  let isCoordination = false;
   if (!isSuperadmin) {
     const { data: actorMembershipRows, error: actorMembershipError } = await adminSupabase
       .from("school_memberships")
@@ -85,10 +91,26 @@ export async function POST(request: Request) {
     isOwner = ((actorMembershipRows as Array<{ school_role: string }> | null) ?? []).some(
       (membership) => membership.school_role === "school_owner"
     );
+
+    isCoordination = ((actorMembershipRows as Array<{ school_role: string }> | null) ?? []).some(
+      (membership) => membership.school_role === "coordination"
+    );
   }
 
-  if (!isSuperadmin && !isOwner) {
+  if (!isSuperadmin && !isOwner && !isCoordination) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
+  }
+
+  const actorScope: ActorScope = isSuperadmin
+    ? "superadmin"
+    : isOwner
+      ? "school_owner"
+      : isCoordination
+        ? "coordination"
+        : "none";
+
+  if (!canAssignRole(actorScope, payload.schoolRole)) {
+    return NextResponse.json({ ok: false, reason: "forbidden-assigned-role" }, { status: 403 });
   }
 
   const { data: targetProfile, error: targetProfileError } = await adminSupabase
@@ -107,14 +129,28 @@ export async function POST(request: Request) {
 
   const { data: existingMembershipRows, error: existingMembershipReadError } = await adminSupabase
     .from("school_memberships")
-    .select("id, school_role")
+    .select("id, school_role, is_active, approval_status")
     .eq("profile_id", payload.profileId);
 
   if (existingMembershipReadError) {
     return NextResponse.json({ ok: false, reason: "membership-read-failed" }, { status: 500 });
   }
 
-  const existingMemberships = (existingMembershipRows as Array<{ id: string; school_role: string }> | null) ?? [];
+  const existingMemberships = (existingMembershipRows as Array<{
+    id: string;
+    school_role: string;
+    is_active: boolean;
+    approval_status: string;
+  }> | null) ?? [];
+
+  const targetRole = getEffectiveManagementRole({
+    platformRole: (targetProfile as { platform_role: string | null }).platform_role,
+    memberships: existingMemberships,
+  });
+
+  if (!canManageTargetRole(actorScope, targetRole)) {
+    return NextResponse.json({ ok: false, reason: "forbidden-target" }, { status: 403 });
+  }
 
   if (existingMemberships.length > 0) {
     const existingIds = existingMemberships.map((membership) => membership.id);

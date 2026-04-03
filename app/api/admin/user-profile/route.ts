@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { canManageTargetRole, getEffectiveManagementRole, type ActorScope } from "@/lib/role-assignment-policy";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase";
 
 interface UpdateUserProfileRequest {
@@ -23,6 +24,28 @@ interface ParentProfileDetails {
   invoiceRequired: boolean;
 }
 
+interface StudentProfileDetails {
+  curp: string | null;
+  gradeLevel: string | null;
+  bloodType: string | null;
+  allergies: string | null;
+  enrollmentDate: string | null;
+  approvalStatus: string | null;
+  onboardingStatus: string | null;
+  dataAuthorizationSignedAt: string | null;
+}
+
+interface StudentProfileRow {
+  curp: string | null;
+  grade_level: string | null;
+  blood_type: string | null;
+  allergies: string | null;
+  enrollment_date: string | null;
+  approval_status: string | null;
+  onboarding_status: string | null;
+  data_authorization_signed_at: string | null;
+}
+
 interface ProfilePayload {
   id: string;
   fullName: string | null;
@@ -40,6 +63,7 @@ interface UpdateUserProfileResponse {
   profile?: ProfilePayload;
   memberships?: ProfileMembership[];
   parentProfile?: ParentProfileDetails | null;
+  studentProfile?: StudentProfileDetails | null;
 }
 
 function getBearerToken(request: Request): string | null {
@@ -53,7 +77,7 @@ function getBearerToken(request: Request): string | null {
 }
 
 async function resolveSuperadminAdminClient(accessToken: string): Promise<
-  | { ok: true; adminSupabase: any }
+  | { ok: true; adminSupabase: ReturnType<typeof getSupabaseAdminClient>; actorScope: ActorScope }
   | { ok: false; response: NextResponse<UpdateUserProfileResponse> }
 > {
   const serverSupabase = getSupabaseServerClient();
@@ -65,9 +89,9 @@ async function resolveSuperadminAdminClient(accessToken: string): Promise<
     };
   }
 
-  let adminSupabase: any;
+  let adminSupabase: ReturnType<typeof getSupabaseAdminClient>;
   try {
-    adminSupabase = getSupabaseAdminClient() as any;
+    adminSupabase = getSupabaseAdminClient();
   } catch {
     return {
       ok: false,
@@ -81,17 +105,57 @@ async function resolveSuperadminAdminClient(accessToken: string): Promise<
     .eq("id", actorData.user.id)
     .maybeSingle();
 
-  if (actorProfileError || (actorProfile as { platform_role: string | null } | null)?.platform_role !== "superadmin") {
+  if (actorProfileError) {
     return {
       ok: false,
       response: NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 }),
     };
   }
 
-  return { ok: true, adminSupabase };
+  const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+
+  let isOwner = false;
+  let isCoordination = false;
+
+  if (!isSuperadmin) {
+    const { data: actorMembershipRows, error: actorMembershipError } = await adminSupabase
+      .from("school_memberships")
+      .select("school_role")
+      .eq("profile_id", actorData.user.id)
+      .eq("is_active", true)
+      .eq("approval_status", "approved");
+
+    if (actorMembershipError) {
+      return {
+        ok: false,
+        response: NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 }),
+      };
+    }
+
+    const actorRoles = (actorMembershipRows as Array<{ school_role: string }> | null) ?? [];
+    isOwner = actorRoles.some((role) => role.school_role === "school_owner");
+    isCoordination = actorRoles.some((role) => role.school_role === "coordination");
+  }
+
+  if (!isSuperadmin && !isOwner && !isCoordination) {
+    return {
+      ok: false,
+      response: NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 }),
+    };
+  }
+
+  const actorScope: ActorScope = isSuperadmin
+    ? "superadmin"
+    : isOwner
+      ? "school_owner"
+      : isCoordination
+        ? "coordination"
+        : "none";
+
+  return { ok: true, adminSupabase, actorScope };
 }
 
-async function fetchProfileComposite(adminSupabase: any, profileId: string) {
+async function fetchProfileComposite(adminSupabase: ReturnType<typeof getSupabaseAdminClient>, profileId: string) {
   const { data: profileRow, error: profileError } = await adminSupabase
     .from("profiles")
     .select("id, full_name, email, phone, date_of_birth, preferred_locale, platform_role")
@@ -116,6 +180,39 @@ async function fetchProfileComposite(adminSupabase: any, profileId: string) {
     .select("curp, rfc, profession, invoice_required")
     .eq("profile_id", profileId)
     .maybeSingle();
+
+  const studentSelect =
+    "curp, grade_level, blood_type, allergies, enrollment_date, approval_status, onboarding_status, data_authorization_signed_at";
+
+  const queryStudentByColumn = async (columnName: string) => {
+    return adminSupabase
+      .from("students")
+      .select(studentSelect)
+      .eq(columnName, profileId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  };
+
+  let studentProfileRow: StudentProfileRow | null = null;
+  let studentLookupErrorMessage: string | null = null;
+
+  const initialStudentLookup = await queryStudentByColumn("created_by_parent_profile_id");
+  studentProfileRow = (initialStudentLookup.data as StudentProfileRow | null) ?? null;
+  studentLookupErrorMessage = initialStudentLookup.error?.message ?? null;
+
+  if (
+    studentLookupErrorMessage &&
+    studentLookupErrorMessage.toLowerCase().includes("created_by_parent_profile_id")
+  ) {
+    const fallbackStudentLookup = await queryStudentByColumn("created_by_profile_id");
+    studentProfileRow = (fallbackStudentLookup.data as StudentProfileRow | null) ?? null;
+    studentLookupErrorMessage = fallbackStudentLookup.error?.message ?? null;
+  }
+
+  if (studentLookupErrorMessage) {
+    console.warn("Could not resolve student profile details for user profile modal:", studentLookupErrorMessage);
+  }
 
   const memberships = ((membershipRows as Array<{ school_role: string; approval_status: ProfileMembership["approvalStatus"]; is_active: boolean }> | null) ?? []).map((row) => ({
     schoolRole: row.school_role,
@@ -145,11 +242,25 @@ async function fetchProfileComposite(adminSupabase: any, profileId: string) {
     }
     : null;
 
+  const studentProfile = studentProfileRow
+    ? {
+      curp: studentProfileRow.curp,
+      gradeLevel: studentProfileRow.grade_level,
+      bloodType: studentProfileRow.blood_type,
+      allergies: studentProfileRow.allergies,
+      enrollmentDate: studentProfileRow.enrollment_date,
+      approvalStatus: studentProfileRow.approval_status,
+      onboardingStatus: studentProfileRow.onboarding_status,
+      dataAuthorizationSignedAt: studentProfileRow.data_authorization_signed_at,
+    }
+    : null;
+
   return {
     ok: true as const,
     profile,
     memberships,
     parentProfile,
+    studentProfile,
   };
 }
 
@@ -180,6 +291,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<UpdateUser
       profile: profileData.profile,
       memberships: profileData.memberships,
       parentProfile: profileData.parentProfile,
+      studentProfile: profileData.studentProfile,
     });
   } catch (error) {
     console.error("Error reading user profile:", error);
@@ -209,6 +321,26 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<UpdateUs
       return NextResponse.json(
         { ok: false, error: "Invalid input: profileId required" },
         { status: 400 }
+      );
+    }
+
+    const targetProfileData = await fetchProfileComposite(adminSupabase, body.profileId);
+    if (!targetProfileData.ok) {
+      return NextResponse.json(
+        { ok: false, error: targetProfileData.error },
+        { status: 500 }
+      );
+    }
+
+    const targetRole = getEffectiveManagementRole({
+      platformRole: targetProfileData.profile.platformRole,
+      memberships: targetProfileData.memberships,
+    });
+
+    if (!canManageTargetRole(superadminResult.actorScope, targetRole)) {
+      return NextResponse.json(
+        { ok: false, error: "Forbidden" },
+        { status: 403 }
       );
     }
 
@@ -261,6 +393,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<UpdateUs
       profile: profileData.profile,
       memberships: profileData.memberships,
       parentProfile: profileData.parentProfile,
+      studentProfile: profileData.studentProfile,
     });
   } catch (error) {
     console.error("Error updating user profile:", error);

@@ -101,6 +101,12 @@
       "local": "not-applied",
       "linked": "applied",
       "notes": "Enforces one active school membership role per profile, deactivates duplicate active rows, and removes active school memberships from superadmin profiles"
+    },
+    "018_parent_profiles_curp_optional.sql": {
+      "readiness": "ready",
+      "local": "not-applied",
+      "linked": "applied",
+      "notes": "Makes parent_profiles.curp nullable; adds partial unique index for non-null CURPs"
     }
   }
 }

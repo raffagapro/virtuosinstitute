@@ -62,7 +62,7 @@ const badgeToneClasses: Record<BadgeTone, string> = {
   teacher: "bg-[#34D399] text-[#003F60]",
   clerk: "bg-[#22D3EE] text-[#003F60]",
   parent: "bg-[#94A3B8] text-white",
-  student: "bg-[#CBD5E1] text-[#003F60]",
+  student: "bg-[#36e7e1] text-[#003F60]",
   guest: "bg-[#E2E8F0] text-[#003F60]",
 };
 

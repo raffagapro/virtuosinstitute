@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { Fragment, useEffect, useMemo, useState, type ComponentType } from "react";
 import {
   ShieldCheck,
   Users,
+  Heart,
   Crown,
-  UserCog,
-  Briefcase,
+  Building2,
+  BriefcaseBusiness,
   GraduationCap,
   ClipboardList,
-  UserCheck,
-  UserRound,
+  HeartHandshake,
+  BookOpen,
+  UserCircle2,
+  ChevronDown,
   X,
   Pencil,
 } from "lucide-react";
@@ -30,6 +33,20 @@ import {
 } from "@/lib/role-assignment-policy";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
+interface StudentDirectoryData {
+  curp: string | null;
+  gradeLevel: string | null;
+  dateOfBirth: string | null;
+  bloodType: string | null;
+  allergies: string | null;
+  approvalStatus: string | null;
+  onboardingStatus: string | null;
+  dataAuthorizationSignedAt: string | null;
+  guardianProfileId: string | null;
+  guardianFullName: string | null;
+  guardianEmail: string | null;
+}
+
 interface UserDirectoryEntry {
   id: string;
   fullName: string | null;
@@ -40,6 +57,9 @@ interface UserDirectoryEntry {
   preferredLocale: string;
   createdAt: string;
   membershipRoles: string[];
+  isStudentRecord?: boolean;
+  studentData?: StudentDirectoryData;
+  linkedStudents?: Array<{ id: string; fullName: string | null; gradeLevel: string | null }>;
 }
 
 interface ProfileMembership {
@@ -136,13 +156,13 @@ const roleBadgeConfig: Record<
     bgColor: "bg-[#C084FC]",
     lightBgColor: "bg-[#F0E5FF]",
     textColor: "text-white",
-    icon: UserCog,
+    icon: Building2,
   },
   coordination: {
     bgColor: "bg-[#60A5FA]",
     lightBgColor: "bg-[#E0F2FF]",
     textColor: "text-white",
-    icon: Briefcase,
+    icon: BriefcaseBusiness,
   },
   teacher: {
     bgColor: "bg-[#34D399]",
@@ -157,22 +177,22 @@ const roleBadgeConfig: Record<
     icon: ClipboardList,
   },
   parent: {
-    bgColor: "bg-[#94A3B8]",
-    lightBgColor: "bg-[#F0F5FA]",
+    bgColor: "bg-[#EC4899]",
+    lightBgColor: "bg-[#FDF2FA]",
     textColor: "text-white",
-    icon: Users,
+    icon: HeartHandshake,
   },
   student: {
-    bgColor: "bg-[#CBD5E1]",
-    lightBgColor: "bg-[#F0F4F8]",
+    bgColor: "bg-[#36e7e1]",
+    lightBgColor: "bg-[#E0FFFE]",
     textColor: "text-[#003F60]",
-    icon: UserCheck,
+    icon: BookOpen,
   },
   guest: {
     bgColor: "bg-[#E2E8F0]",
     lightBgColor: "bg-[#F8FAFC]",
     textColor: "text-[#003F60]",
-    icon: UserRound,
+    icon: UserCircle2,
   },
 };
 
@@ -205,6 +225,10 @@ interface SuperadminUsersDirectoryProps {
   authorizeModalConfirmLabel: string;
   authorizeModalSubmittingLabel: string;
   authorizeModalErrorLabel: string;
+  authorizeModalGradeLabel?: string;
+  authorizeModalGuardianLabel?: string;
+  linkedStudentsLabel?: string;
+  linkedParentLabel?: string;
   roleOptionSchoolOwnerLabel: string;
   roleOptionDirectionLabel: string;
   roleOptionCoordinationLabel: string;
@@ -270,6 +294,9 @@ interface SuperadminUsersDirectoryProps {
   profileModalDeactivate: string;
   profileModalDeactivateConfirm: string;
   profileModalDeactivateButton: string;
+  profileModalActivate?: string;
+  profileModalActivateConfirm?: string;
+  profileModalActivateButton?: string;
   profileModalError: string;
   statusApprovedLabel?: string;
   statusRejectedLabel?: string;
@@ -306,6 +333,10 @@ export function SuperadminUsersDirectory({
   authorizeModalConfirmLabel,
   authorizeModalSubmittingLabel,
   authorizeModalErrorLabel,
+  authorizeModalGradeLabel,
+  authorizeModalGuardianLabel,
+  linkedStudentsLabel = "Students",
+  linkedParentLabel = "Parent / Guardian",
   roleOptionSchoolOwnerLabel,
   roleOptionDirectionLabel,
   roleOptionCoordinationLabel,
@@ -371,6 +402,9 @@ export function SuperadminUsersDirectory({
   profileModalDeactivate,
   profileModalDeactivateConfirm,
   profileModalDeactivateButton,
+  profileModalActivate,
+  profileModalActivateConfirm,
+  profileModalActivateButton,
   profileModalError,
   statusApprovedLabel,
   statusRejectedLabel,
@@ -382,6 +416,7 @@ export function SuperadminUsersDirectory({
   const [hasError, setHasError] = useState(false);
   const [users, setUsers] = useState<UserDirectoryEntry[]>([]);
   const [actorScope, setActorScope] = useState<ActorScope>("superadmin");
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   const roleLabels = useMemo(
     () => ({
@@ -885,6 +920,43 @@ export function SuperadminUsersDirectory({
         throw new Error(errorLabel);
       }
 
+      // Student records are approved via a dedicated student endpoint (no school membership)
+      if (selectedPendingUser.isStudentRecord) {
+        const response = await fetch(`/api/admin/students/${selectedPendingUser.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ action: "approve" }),
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.reason || authorizeModalErrorLabel);
+        }
+
+        setUsers((previousUsers) =>
+          previousUsers.map((user) => {
+            if (user.id !== selectedPendingUser.id) {
+              return user;
+            }
+
+            return {
+              ...user,
+              hasPendingAuthorization: false,
+              isActive: true,
+              studentData: user.studentData
+                ? { ...user.studentData, approvalStatus: "approved", onboardingStatus: "active" }
+                : user.studentData,
+            };
+          })
+        );
+
+        setSelectedPendingUser(null);
+        return;
+      }
+
       const response = await fetch("/api/admin/parent-approvals", {
         method: "POST",
         headers: {
@@ -933,7 +1005,7 @@ export function SuperadminUsersDirectory({
     setProfileFormData({
       fullName: user.fullName || "",
       phone: "",
-      dateOfBirth: "",
+      dateOfBirth: user.studentData?.dateOfBirth || "",
       preferredLocale: user.preferredLocale || "",
     });
     setProfileError(null);
@@ -950,6 +1022,39 @@ export function SuperadminUsersDirectory({
     setTransferContactedCurrentParent(false);
     setTransferContactedTargetParent(false);
     setTransferNotes("");
+
+    // Student records have no auth profile — populate inline from directory data
+    if (user.isStudentRecord) {
+      const sd = user.studentData;
+      setProfileDetails({
+        profile: {
+          id: user.id,
+          fullName: user.fullName,
+          email: null,
+          phone: null,
+          dateOfBirth: sd?.dateOfBirth ?? null,
+          preferredLocale: user.preferredLocale,
+          platformRole: null,
+          isActive: user.isActive,
+        },
+        memberships: [],
+        parentProfile: null,
+        studentProfile: sd
+          ? {
+              curp: sd.curp,
+              gradeLevel: sd.gradeLevel,
+              bloodType: sd.bloodType,
+              allergies: sd.allergies,
+              enrollmentDate: null,
+              approvalStatus: sd.approvalStatus,
+              onboardingStatus: sd.onboardingStatus,
+              dataAuthorizationSignedAt: sd.dataAuthorizationSignedAt,
+            }
+          : null,
+      });
+      setIsProfileDetailsLoading(false);
+      return;
+    }
 
     try {
       const {
@@ -1344,23 +1449,41 @@ export function SuperadminUsersDirectory({
         throw new Error(profileModalError);
       }
 
-      const response = await fetch("/api/admin/user-profile", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          profileId: selectedProfileUser.id,
-          isActive: false,
-        }),
-      });
+      if (selectedProfileUser.isStudentRecord) {
+        const action = selectedProfileUser.isActive ? "reject" : "approve";
+        const response = await fetch(`/api/admin/students/${selectedProfileUser.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ action }),
+        });
 
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null);
-        throw new Error(payload?.error || profileModalError);
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.reason || profileModalError);
+        }
+      } else {
+        const response = await fetch("/api/admin/user-profile", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            profileId: selectedProfileUser.id,
+            isActive: !selectedProfileUser.isActive,
+          }),
+        });
+
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null);
+          throw new Error(payload?.error || profileModalError);
+        }
       }
 
+      const newIsActive = !selectedProfileUser.isActive;
       setUsers((previousUsers) =>
         previousUsers.map((user) => {
           if (user.id !== selectedProfileUser.id) {
@@ -1369,7 +1492,7 @@ export function SuperadminUsersDirectory({
 
           return {
             ...user,
-            isActive: false,
+            isActive: newIsActive,
           };
         })
       );
@@ -1450,68 +1573,153 @@ export function SuperadminUsersDirectory({
                       ""
                     : "";
 
-                return (
-                  <tr key={user.id} className={`border-t border-[#eef4fa] ${rowBgColor}`}>
-                    <td className="px-4 py-3 text-sm">
-                      <button
-                        type="button"
-                        onClick={() => openProfileModal(user)}
-                        className="text-[#003F60] hover:text-[#36e7e1] hover:underline font-medium"
-                      >
-                        {user.fullName || "-"}
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-[#2b5876]">{user.email || "-"}</td>
-                    {shouldRenderPlatformRole ? (
-                      <td className="px-4 py-3 text-sm text-[#003F60]">{user.platformRole || "-"}</td>
-                    ) : null}
-                    <td className="px-4 py-3 text-sm text-[#2b5876]">
-                      {user.membershipRoles.length > 0 ? (
-                        <div className="flex items-center gap-2">
-                          {user.membershipRoles.map((role) => {
-                            const config = roleBadgeConfig[role as BadgeTone];
-                            const Icon = config?.icon;
-                            const label = roleLabels[role as keyof typeof roleLabels] || role;
+                return (() => {
+                  const isParentRow = user.membershipRoles.includes("parent");
+                  const isStudentRow = user.isStudentRecord === true;
+                  const hasLinkedItems =
+                    (isParentRow && (user.linkedStudents?.length ?? 0) > 0) ||
+                    (isStudentRow && !!user.studentData?.guardianProfileId);
+                  const isExpanded = expandedRowId === user.id;
+                  const colCount = shouldRenderPlatformRole ? 5 : 4;
 
-                            if (!Icon) {
-                              return <span key={role}>{label}</span>;
-                            }
+                  return (
+                    <Fragment key={user.id}>
+                      <tr className={`border-t border-[#eef4fa] ${rowBgColor}`}>
+                        <td className="px-4 py-3 text-sm">
+                          <button
+                            type="button"
+                            onClick={() => openProfileModal(user)}
+                            className="text-[#003F60] hover:text-[#36e7e1] hover:underline font-medium text-left"
+                          >
+                            {user.fullName || "-"}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-[#2b5876]">{user.email || "-"}</td>
+                        {shouldRenderPlatformRole ? (
+                          <td className="px-4 py-3 text-sm text-[#003F60]">{user.platformRole || "-"}</td>
+                        ) : null}
+                        <td className="px-4 py-3 text-sm text-[#2b5876]">
+                          {user.membershipRoles.length > 0 ? (
+                            <div className="flex items-center gap-2">
+                              {user.membershipRoles.map((role) => {
+                                const config = roleBadgeConfig[role as BadgeTone];
+                                const Icon = config?.icon;
+                                const label = roleLabels[role as keyof typeof roleLabels] || role;
 
-                            return (
-                              <div
-                                key={role}
-                                className="group relative inline-flex"
-                                title={label}
+                                if (!Icon) {
+                                  return <span key={role}>{label}</span>;
+                                }
+
+                                return (
+                                  <div
+                                    key={role}
+                                    className="group relative inline-flex"
+                                    title={label}
+                                  >
+                                    <Icon className={`h-5 w-5 cursor-help ${config.bgColor} p-1 rounded`} />
+                                    <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded bg-[#003F60] px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap z-10">
+                                      {label}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            {user.hasPendingAuthorization ? (
+                              <button
+                                type="button"
+                                onClick={() => openAuthorizeModal(user)}
+                                className="inline-flex items-center rounded-full bg-[#fa4361] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.6px] text-white hover:bg-[#e63450]"
                               >
-                                <Icon className={`h-5 w-5 cursor-help ${config.bgColor} p-1 rounded`} />
-                                <div className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded bg-[#003F60] px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 whitespace-nowrap z-10">
-                                  {label}
-                                </div>
+                                {pendingStatusLabel}
+                              </button>
+                            ) : user.isActive ? (
+                              <span className="text-[#2b5876]">{statusActiveLabel}</span>
+                            ) : (
+                              <span className="text-[#2b5876]">{statusInactiveLabel}</span>
+                            )}
+                            {hasLinkedItems ? (
+                              <button
+                                type="button"
+                                onClick={() => setExpandedRowId(isExpanded ? null : user.id)}
+                                className="shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-[#003F60] bg-[#003F60]/10 hover:bg-[#003F60]/20"
+                                title={isParentRow ? linkedStudentsLabel : linkedParentLabel}
+                              >
+                                {isParentRow ? (
+                                  <>
+                                    <BookOpen className="h-3 w-3" />
+                                    <span>{user.linkedStudents!.length}</span>
+                                  </>
+                                ) : (
+                                  <HeartHandshake className="h-3 w-3" />
+                                )}
+                                <ChevronDown className={`h-3 w-3 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                              </button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded && hasLinkedItems ? (
+                        <tr className={rowBgColor}>
+                          <td colSpan={colCount} className="px-6 pb-4 pt-0">
+                            {isParentRow ? (
+                              <div className="rounded-lg border border-[#d6e8f6] bg-white/60 p-3">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#003F60]">
+                                  {linkedStudentsLabel}
+                                </p>
+                                <ul className="space-y-1">
+                                  {user.linkedStudents!.map((s) => {
+                                    const studentEntry = users.find((u) => u.id === s.id);
+                                    return (
+                                      <li key={s.id}>
+                                        <button
+                                          type="button"
+                                          onClick={() => { if (studentEntry) openProfileModal(studentEntry); }}
+                                          className="text-sm text-[#003F60] hover:text-[#36e7e1] hover:underline"
+                                        >
+                                          {s.fullName || "-"}
+                                          {s.gradeLevel ? (
+                                            <span className="ml-2 text-xs text-[#2b5876]">({s.gradeLevel})</span>
+                                          ) : null}
+                                        </button>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
                               </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-[#2b5876]">
-                      {user.hasPendingAuthorization ? (
-                        <button
-                          type="button"
-                          onClick={() => openAuthorizeModal(user)}
-                          className="inline-flex items-center rounded-full bg-[#fa4361] px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.6px] text-white hover:bg-[#e63450]"
-                        >
-                          {pendingStatusLabel}
-                        </button>
-                      ) : user.isActive ? (
-                        statusActiveLabel
-                      ) : (
-                        statusInactiveLabel
-                      )}
-                    </td>
-                  </tr>
-                );
+                            ) : (
+                              <div className="rounded-lg border border-[#d6e8f6] bg-white/60 p-3">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#003F60]">
+                                  {linkedParentLabel}
+                                </p>
+                                {user.studentData?.guardianProfileId ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const parentEntry = users.find((u) => u.id === user.studentData!.guardianProfileId);
+                                      if (parentEntry) openProfileModal(parentEntry);
+                                    }}
+                                    className="text-sm text-[#003F60] hover:text-[#36e7e1] hover:underline"
+                                  >
+                                    {user.studentData.guardianFullName || "-"}
+                                    {user.studentData.guardianEmail ? (
+                                      <span className="ml-2 text-xs text-[#2b5876]">({user.studentData.guardianEmail})</span>
+                                    ) : null}
+                                  </button>
+                                ) : "-"}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })();
               })}
             </tbody>
           </table>
@@ -1534,35 +1742,50 @@ export function SuperadminUsersDirectory({
                 <span className="font-semibold text-[#003F60]">{authorizeModalEmailLabel}: </span>
                 {selectedPendingUser.email || "-"}
               </p>
-              <label className="block">
-                <span className="block font-semibold text-[#003F60]" id="authorize-role-label">{authorizeModalRoleLabel}</span>
-                <select
-                  id="authorize-role-select"
-                  aria-labelledby="authorize-role-label"
-                  value={assignedRole}
-                  onChange={(event) =>
-                    setAssignedRole(
-                      event.target.value as
-                        | "school_owner"
-                        | "direction"
-                        | "coordination"
-                        | "teacher"
-                        | "clerk"
-                        | "parent"
-                        | "student"
-                        | "guest"
-                    )
-                  }
-                  disabled={isAuthorizing}
-                  className="mt-2 w-full rounded-lg border border-[#d6e8f6] bg-white px-3 py-2 text-sm text-[#003F60]"
-                >
-                  {roleAssignOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              {selectedPendingUser.isStudentRecord ? (
+                <>
+                  <p>
+                    <span className="font-semibold text-[#003F60]">{authorizeModalGradeLabel || "Grade"}: </span>
+                    {selectedPendingUser.studentData?.gradeLevel || "-"}
+                  </p>
+                  <p>
+                    <span className="font-semibold text-[#003F60]">{authorizeModalGuardianLabel || "Parent / Guardian"}: </span>
+                    {selectedPendingUser.studentData?.guardianFullName || "-"}
+                    {selectedPendingUser.studentData?.guardianEmail ? ` (${selectedPendingUser.studentData.guardianEmail})` : ""}
+                  </p>
+                </>
+              ) : null}
+              {!selectedPendingUser.isStudentRecord ? (
+                <label className="block">
+                  <span className="block font-semibold text-[#003F60]" id="authorize-role-label">{authorizeModalRoleLabel}</span>
+                  <select
+                    id="authorize-role-select"
+                    aria-labelledby="authorize-role-label"
+                    value={assignedRole}
+                    onChange={(event) =>
+                      setAssignedRole(
+                        event.target.value as
+                          | "school_owner"
+                          | "direction"
+                          | "coordination"
+                          | "teacher"
+                          | "clerk"
+                          | "parent"
+                          | "student"
+                          | "guest"
+                      )
+                    }
+                    disabled={isAuthorizing}
+                    className="mt-2 w-full rounded-lg border border-[#d6e8f6] bg-white px-3 py-2 text-sm text-[#003F60]"
+                  >
+                    {roleAssignOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
             </div>
 
             {authorizeError ? (
@@ -1818,6 +2041,15 @@ export function SuperadminUsersDirectory({
                     <p className="text-xs font-medium text-[#2b5876]">{profileModalStudentDataAuthorizationSignedAt}</p>
                     <p className="text-sm text-[#003F60]">{profileDetails.studentProfile.dataAuthorizationSignedAt || "-"}</p>
                   </div>
+                  {selectedProfileUser?.isStudentRecord && selectedProfileUser.studentData?.guardianFullName ? (
+                    <div className="sm:col-span-2">
+                      <p className="text-xs font-medium text-[#2b5876]">{profileModalTransferContactCurrentParentLabel || "Guardian"}</p>
+                      <p className="text-sm text-[#003F60]">
+                        {selectedProfileUser.studentData.guardianFullName}
+                        {selectedProfileUser.studentData.guardianEmail ? ` — ${selectedProfileUser.studentData.guardianEmail}` : ""}
+                      </p>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -2018,7 +2250,7 @@ export function SuperadminUsersDirectory({
               <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-[#b51d3a]">{profileError}</p>
             ) : null}
 
-            <div className="mt-5 flex flex-col gap-3">
+            <div className="mt-5 flex flex-col gap-3 sticky bottom-0 bg-white pt-3 border-t border-[#eef4fa]">
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -2028,48 +2260,63 @@ export function SuperadminUsersDirectory({
                 >
                   {profileModalCancel}
                 </button>
-                <button
-                  type="button"
-                  onClick={saveProfileChanges}
-                  disabled={isProfileFormBusy || !canManageSelectedProfile}
-                  className="rounded-lg bg-[#36e7e1] px-4 py-2 text-sm font-semibold text-[#003F60] hover:bg-[#23d2cc] disabled:opacity-60"
-                >
-                  {isSavingProfile ? profileModalSaving : profileModalSave}
-                </button>
+                {!selectedProfileUser?.isStudentRecord ? (
+                  <button
+                    type="button"
+                    onClick={saveProfileChanges}
+                    disabled={isProfileFormBusy || !canManageSelectedProfile}
+                    className="rounded-lg bg-[#36e7e1] px-4 py-2 text-sm font-semibold text-[#003F60] hover:bg-[#23d2cc] disabled:opacity-60"
+                  >
+                    {isSavingProfile ? profileModalSaving : profileModalSave}
+                  </button>
+                ) : null}
               </div>
 
-              {canManageSelectedProfile && !showDeactivateConfirm ? (
-                <button
-                  type="button"
-                  onClick={() => setShowDeactivateConfirm(true)}
-                  disabled={isProfileFormBusy}
-                  className="rounded-lg border border-[#fa4361] px-4 py-2 text-sm font-medium text-[#fa4361] hover:bg-[#fde8eb] disabled:opacity-60"
-                >
-                  {profileModalDeactivate}
-                </button>
-              ) : canManageSelectedProfile ? (
-                <div className="space-y-2 rounded-lg bg-[#FFF3F5] p-3">
-                  <p className="text-sm text-[#2b5876]">{profileModalDeactivateConfirm}</p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowDeactivateConfirm(false)}
-                      disabled={isProfileFormBusy}
-                      className="flex-1 rounded-lg border border-[#d6e8f6] px-3 py-1.5 text-xs font-medium text-[#003F60] hover:bg-[#f5fbff] disabled:opacity-60"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={deactivateUser}
-                      disabled={isProfileFormBusy}
-                      className="flex-1 rounded-lg bg-[#fa4361] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#e63450] disabled:opacity-60"
-                    >
-                      {profileModalDeactivateButton}
-                    </button>
-                  </div>
-                </div>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => setShowDeactivateConfirm(true)}
+                disabled={isProfileFormBusy}
+                className={selectedProfileUser?.isActive
+                  ? "rounded-lg border border-[#fa4361] px-4 py-2 text-sm font-medium text-[#fa4361] hover:bg-[#fde8eb] disabled:opacity-60"
+                  : "rounded-lg border border-[#34D399] px-4 py-2 text-sm font-medium text-[#065f46] hover:bg-[#d1fae5] disabled:opacity-60"}
+              >
+                {selectedProfileUser?.isActive
+                  ? profileModalDeactivate
+                  : (profileModalActivate || "Activate user")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showDeactivateConfirm && selectedProfileUser ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#003F60]/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-[#d6e8f6] bg-white p-5 sm:p-6">
+            <h2 className="font-['Sora',Helvetica,Arial,sans-serif] text-lg font-bold text-[#003F60]">
+              {selectedProfileUser.isActive ? profileModalDeactivate : (profileModalActivate || "Activate user")}
+            </h2>
+            <p className="mt-3 text-sm text-[#2b5876]">
+              {selectedProfileUser.isActive ? profileModalDeactivateConfirm : (profileModalActivateConfirm || "Activate this user so they can access the platform again?")}
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowDeactivateConfirm(false)}
+                disabled={isProfileFormBusy}
+                className="flex-1 rounded-lg border border-[#d6e8f6] px-4 py-2 text-sm font-medium text-[#003F60] hover:bg-[#f5fbff] disabled:opacity-60"
+              >
+                {profileModalCancel}
+              </button>
+              <button
+                type="button"
+                onClick={deactivateUser}
+                disabled={isProfileFormBusy}
+                className={selectedProfileUser.isActive
+                  ? "flex-1 rounded-lg bg-[#fa4361] px-4 py-2 text-sm font-semibold text-white hover:bg-[#e63450] disabled:opacity-60"
+                  : "flex-1 rounded-lg bg-[#34D399] px-4 py-2 text-sm font-semibold text-[#003F60] hover:bg-[#22c987] disabled:opacity-60"}
+              >
+                {selectedProfileUser.isActive ? profileModalDeactivateButton : (profileModalActivateButton || "Yes, activate")}
+              </button>
             </div>
           </div>
         </div>

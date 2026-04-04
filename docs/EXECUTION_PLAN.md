@@ -143,7 +143,15 @@
     - [x] `ParentChildrenPage` client component — list, add-child inline form, status badges
     - [x] `app/platfrom/dashboard/parent/children/page.tsx` SSR wrapper passing i18n labels
     - [x] Children sidebar link added to parent dashboard layout
+    - [x] CURP format validation (client + server, `lib/curp.ts`)
+    - [x] Grade level dropdown (Kinder 1–3, Primaria 1°–6°)
+    - [x] CURP lookup link to gob.mx
+    - [x] Specific error reasons returned by API (`forbidden`, `invalid-curp`, `duplicate-curp`) mapped to i18n messages
+    - [x] `parent_profiles.curp` made nullable (migration 018) — registration no longer requires parent CURP
   - [ ] Staff child-record approval queue UI and actions
+    - [x] Student records merged into existing users-directory listing (`GET /api/admin/users-directory` returns student rows with `isStudentRecord: true`)
+    - [x] `PATCH /api/admin/students/[id]` — approve or reject a student record (superadmin / school_owner / coordination)
+    - [x] `SuperadminUsersDirectory` component handles student rows: no role picker in authorize modal, approve calls student endpoint, profile modal shows student details read-only with guardian info
 
 ### Single-School Refactor (Option 2)
 - [x] Remove school dependency from runtime onboarding flow

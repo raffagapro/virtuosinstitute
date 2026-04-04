@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseAdminClient, getSupabaseServerClient } from "@/lib/supabase";
+import { isValidCurpFormat } from "@/lib/curp";
 
 function getBearerToken(request: NextRequest): string | null {
   const authHeader = request.headers.get("authorization") ?? "";
@@ -17,6 +18,9 @@ interface StudentRow {
   date_of_birth: string | null;
   curp: string | null;
   grade_level: string | null;
+  blood_type: string | null;
+  allergies: string | null;
+  data_authorization_signed_at: string | null;
   approval_status: string;
   onboarding_status: string;
   created_at: string;
@@ -24,9 +28,12 @@ interface StudentRow {
 
 interface RegisterChildPayload {
   fullName?: string;
-  dateOfBirth?: string | null;
-  curp?: string | null;
-  gradeLevel?: string | null;
+  dateOfBirth?: string;
+  curp?: string;
+  gradeLevel?: string;
+  bloodType?: string | null;
+  allergies?: string | null;
+  dataAuthorization?: boolean;
 }
 
 export async function GET(request: NextRequest) {
@@ -86,7 +93,7 @@ export async function GET(request: NextRequest) {
 
   const { data: studentRows, error: studentsError } = await adminSupabase
     .from("students")
-    .select("id, full_name, date_of_birth, curp, grade_level, approval_status, onboarding_status, created_at")
+    .select("id, full_name, date_of_birth, curp, grade_level, blood_type, allergies, data_authorization_signed_at, approval_status, onboarding_status, created_at")
     .in("id", studentIds)
     .order("created_at", { ascending: false });
 
@@ -100,6 +107,9 @@ export async function GET(request: NextRequest) {
     dateOfBirth: row.date_of_birth ?? null,
     curp: row.curp ?? null,
     gradeLevel: row.grade_level ?? null,
+    bloodType: row.blood_type ?? null,
+    allergies: row.allergies ?? null,
+    dataAuthorizationSignedAt: row.data_authorization_signed_at ?? null,
     approvalStatus: row.approval_status,
     onboardingStatus: row.onboarding_status,
     createdAt: row.created_at,
@@ -122,8 +132,16 @@ export async function POST(request: NextRequest) {
 
   const payload = (await request.json()) as RegisterChildPayload;
   const fullName = payload.fullName?.trim();
-  if (!fullName) {
+  const dateOfBirth = payload.dateOfBirth?.trim();
+  const curp = payload.curp?.trim().toUpperCase();
+  const gradeLevel = payload.gradeLevel?.trim();
+
+  if (!fullName || !dateOfBirth || !curp || !gradeLevel || !payload.dataAuthorization) {
     return NextResponse.json({ ok: false, reason: "invalid-input" }, { status: 400 });
+  }
+
+  if (!isValidCurpFormat(curp)) {
+    return NextResponse.json({ ok: false, reason: "invalid-curp" }, { status: 400 });
   }
 
   let adminSupabase: ReturnType<typeof getSupabaseAdminClient>;
@@ -136,7 +154,7 @@ export async function POST(request: NextRequest) {
   // Verify the user has an approved parent membership
   const { data: membershipRows, error: membershipError } = await adminSupabase
     .from("school_memberships")
-    .select("school_role")
+    .select("school_role, approval_status, is_active")
     .eq("profile_id", userData.user.id)
     .eq("school_role", "parent")
     .eq("approval_status", "approved")
@@ -151,14 +169,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }
 
+  // Ensure a parent_profiles row exists for the FK on student_guardians.
+  // We upsert with no CURP — the parent can fill that in their own profile later.
+  const { error: parentProfileUpsertError } = await adminSupabase
+    .from("parent_profiles")
+    .upsert({ profile_id: userData.user.id }, { onConflict: "profile_id", ignoreDuplicates: true });
+
+  if (parentProfileUpsertError) {
+    return NextResponse.json({ ok: false, reason: "parent-profile-setup-failed" }, { status: 500 });
+  }
+
   // Create the student record
   const { data: newStudent, error: studentInsertError } = await adminSupabase
     .from("students")
     .insert({
       full_name: fullName,
-      date_of_birth: payload.dateOfBirth ?? null,
-      curp: payload.curp?.trim() || null,
-      grade_level: payload.gradeLevel?.trim() || null,
+      date_of_birth: dateOfBirth,
+      curp,
+      grade_level: gradeLevel,
+      blood_type: payload.bloodType?.trim() || null,
+      allergies: payload.allergies?.trim() || null,
+      data_authorization_signed_at: payload.dataAuthorization ? new Date().toISOString() : null,
+      data_authorization_signed_by_profile_id: payload.dataAuthorization ? userData.user.id : null,
       onboarding_status: "submitted",
       approval_status: "pending",
       created_by_profile_id: userData.user.id,
@@ -167,6 +199,13 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (studentInsertError || !newStudent) {
+    console.error("[register-child] student insert error:", studentInsertError?.code, studentInsertError?.message);
+    const isDuplicateCurp =
+      (studentInsertError?.message ?? "").includes("students_school_curp_unique_idx") ||
+      (studentInsertError?.code ?? "") === "23505";
+    if (isDuplicateCurp) {
+      return NextResponse.json({ ok: false, reason: "duplicate-curp" }, { status: 409 });
+    }
     return NextResponse.json({ ok: false, reason: "student-create-failed" }, { status: 500 });
   }
 
@@ -185,6 +224,7 @@ export async function POST(request: NextRequest) {
     });
 
   if (guardianInsertError) {
+    console.error("[register-child] guardian insert error:", guardianInsertError.code, guardianInsertError.message);
     // Roll back the student if the guardian link fails
     await adminSupabase.from("students").delete().eq("id", studentId);
     return NextResponse.json({ ok: false, reason: "guardian-link-failed" }, { status: 500 });

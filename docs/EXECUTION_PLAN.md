@@ -211,6 +211,9 @@
   - [x] Parent can view and edit: full name, phone, language, CURP, RFC, profession, invoice requirement
   - [x] Staff and superadmin can view and edit: full name, phone, language (no parent-specific fields)
 - [ ] Child onboarding and child-profile editing flow for approved parents
+    - [x] Parent children page: click child name → pre-filled edit modal (`PATCH /api/parent/children/[id]`)
+    - [x] Child cards styled with student teal color (`#36e7e1`), `BookOpen` icon, and approval badge shown only for non-approved states
+    - [x] Enrollment form download button (icon-only, red) with hover tooltip in children page header
 - [ ] Parent upload flow for INE/passport and student-related authorization documents
 - [ ] Authorized pickup-person management with add/remove controls and consent capture
 
@@ -230,6 +233,10 @@
   - [x] Added profile edit modal (full name, phone, DOB, locale, CURP, RFC, profession, invoice) from users directory
   - [x] Added membership role edit/update from profile modal (actor-scoped, guarded by canManageSelectedProfile)
   - [x] Added deactivate user with confirm dialog from profile modal (guarded by canManageSelectedProfile)
+  - [x] Deactivate/activate toggle: separate confirm overlay modal (`z-[60]`), activate button shown in green for inactive users
+  - [x] Student records surfaced in users directory as distinct rows (`isStudentRecord: true`) with `BookOpen` icon, teal student color, linked parent accordion, and student-specific profile modal
+  - [x] Linked students accordion under parent rows; linked parent accordion under student rows (expand in status cell)
+  - [x] Badge icons and filter button active colors synced across directory and `AppUsersDirectoryControls`
   - [x] Superadmin and staff users directory share the same `SuperadminUsersDirectory` component via `/platfrom/dashboard/staff/users`
 - [x] Add superadmin Dev tab for seeded email-account creation in QA environments
   - [x] Added superadmin Dev tool to reset password for existing email users by account email
@@ -260,7 +267,10 @@
   - [x] Profile modal edit and deactivate actions are gated by `canManageSelectedProfile` (actor-aware)
 - [x] Parent approval queue
   - [x] Approve/reject pending parent access requests via authorize modal inside users directory (role assignment + approve/reject with `POST /api/admin/parent-approvals`)
-- [ ] Child-onboarding approval queue (blocked: child registration flow not yet built)
+- [x] Child-onboarding approval queue
+    - [x] Student records merged into users-directory listing; `PATCH /api/admin/students/[id]` (approve/reject) wired to authorize modal
+    - [x] Fixed `onboarding_status` value bug — approve sets `"approved"`, reject omits the field
+    - [x] Activate/deactivate for student records calls student endpoint and toggles approval status
 
 ### Student Operations
 - [ ] Student record status board (documents complete, tuition standing, approvals)

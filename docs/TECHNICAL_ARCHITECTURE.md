@@ -144,6 +144,22 @@ Shared dashboard presentation is centralized in reusable UI primitives:
 - `components/ui/AppUsersDirectoryControls.tsx`
 Feature-level dashboards compose these primitives while reducing visibility and capability by role.
 
+**Role color tokens (used consistently across badges, filters, and cards):**
+
+| Role | Color | Text |
+|---|---|---|
+| `superadmin` | `#E5E4E2` (platinum) | `#003F60` |
+| `school_owner` | `#D4AF37` (gold) | `#003F60` |
+| `direction` | `#C084FC` (purple) | white |
+| `coordination` | `#60A5FA` (blue) | white |
+| `teacher` | `#34D399` (green) | `#003F60` |
+| `clerk` | `#22D3EE` (cyan) | `#003F60` |
+| `parent` | `#EC4899` (pink) | white |
+| `student` | `#36e7e1` (teal — matches nav profile button) | `#003F60` |
+| `guest` | `#E2E8F0` (slate) | `#003F60` |
+
+These tokens are defined in `SuperadminUsersDirectory.tsx` (`roleBadgeConfig`), `AppUsersDirectoryControls.tsx` (filter active states), `AppDashboardNavbar.tsx` (role badge), and child-record cards in `ParentChildrenPage.tsx`.
+
 Superadmin navigation baseline:
 - Layout: `/platfrom/dashboard/superadmin` uses fixed top navbar + left sidebar.
 - Sidebar page links: `/platfrom/dashboard/superadmin` (home) and `/platfrom/dashboard/superadmin/users`.
@@ -183,6 +199,19 @@ Superadmin navigation baseline:
 - The implementation-facing source of truth for role capabilities is `docs/ROLE_PERMISSION_MATRIX.md`.
 - SQL migration sequencing is documented in `docs/SQL_MIGRATION_PLAN.md`.
 - First-pass database policy design is documented in `docs/RLS_POLICY_PLAN.md`.
+- Role-oriented feature surfaces:
+  - Superadmin dashboard:
+    - global user directory with student rows merged in (`isStudentRecord: true`), role badges, accordion-linked parents/students
+    - deactivate/activate toggle with separate confirm overlay modal
+    - feature-flagged dev tools tab for seeded email/password account creation (QA workflows)
+  - School staff dashboard:
+    - role-aware user directory sharing `SuperadminUsersDirectory` with actor-scoped visibility
+    - parent approvals and child-record approval/rejection via `PATCH /api/admin/students/[id]`
+  - Parent dashboard:
+    - child list at `/platfrom/dashboard/parent/children` — `GET /api/parent/children`
+    - register child — `POST /api/parent/children`
+    - edit child profile — `PATCH /api/parent/children/[id]` (click child name → pre-filled modal)
+    - enrollment form download button in page header
 - Auth provider: Supabase Auth with Google OAuth as the primary sign-in provider.
 - Optional QA/future path: feature-flagged email/password sign-in can be enabled per environment for controlled testing or staged rollout.
 - App roles are split into platform-level and operational domains.

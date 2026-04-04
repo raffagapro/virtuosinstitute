@@ -181,38 +181,15 @@ async function fetchProfileComposite(adminSupabase: ReturnType<typeof getSupabas
     .eq("profile_id", profileId)
     .maybeSingle();
 
-  const studentSelect =
-    "curp, grade_level, blood_type, allergies, enrollment_date, approval_status, onboarding_status, data_authorization_signed_at";
+  const { data: studentProfileRowRaw } = await adminSupabase
+    .from("students")
+    .select("curp, grade_level, blood_type, allergies, enrollment_date, approval_status, onboarding_status, data_authorization_signed_at")
+    .eq("created_by_profile_id", profileId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
-  const queryStudentByColumn = async (columnName: string) => {
-    return adminSupabase
-      .from("students")
-      .select(studentSelect)
-      .eq(columnName, profileId)
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-  };
-
-  let studentProfileRow: StudentProfileRow | null = null;
-  let studentLookupErrorMessage: string | null = null;
-
-  const initialStudentLookup = await queryStudentByColumn("created_by_parent_profile_id");
-  studentProfileRow = (initialStudentLookup.data as StudentProfileRow | null) ?? null;
-  studentLookupErrorMessage = initialStudentLookup.error?.message ?? null;
-
-  if (
-    studentLookupErrorMessage &&
-    studentLookupErrorMessage.toLowerCase().includes("created_by_parent_profile_id")
-  ) {
-    const fallbackStudentLookup = await queryStudentByColumn("created_by_profile_id");
-    studentProfileRow = (fallbackStudentLookup.data as StudentProfileRow | null) ?? null;
-    studentLookupErrorMessage = fallbackStudentLookup.error?.message ?? null;
-  }
-
-  if (studentLookupErrorMessage) {
-    console.warn("Could not resolve student profile details for user profile modal:", studentLookupErrorMessage);
-  }
+  const studentProfileRow = studentProfileRowRaw as StudentProfileRow | null;
 
   const memberships = ((membershipRows as Array<{ school_role: string; approval_status: ProfileMembership["approvalStatus"]; is_active: boolean }> | null) ?? []).map((row) => ({
     schoolRole: row.school_role,

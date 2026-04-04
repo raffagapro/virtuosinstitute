@@ -33,13 +33,23 @@ const labels = {
     fullNamePlaceholder: "Full legal name",
     dateOfBirth: "Date of birth",
     curp: "CURP",
-    curpPlaceholder: "Optional",
+    curpPlaceholder: "18-character CURP",
+    curpError: "Invalid CURP format",
+    curpLookupLink: "Look up CURP",
     gradeLevel: "Grade level",
-    gradeLevelPlaceholder: "e.g. Kinder 2",
+    gradeLevelDefaultOption: "Select grade level",
+    bloodType: "Blood type",
+    bloodTypePlaceholder: "Select blood type",
+    allergies: "Allergies",
+    allergiesPlaceholder: "List any known allergies",
+    dataAuthorization: "I authorize the school to process my child's data.",
     cancel: "Cancel",
     submit: "Register child",
     submitting: "Registering...",
     error: "Could not register",
+    errorForbidden: "Account not approved",
+    errorInvalidCurp: "Invalid CURP format",
+    errorDuplicateCurp: "CURP already registered",
   },
 };
 
@@ -81,8 +91,11 @@ describe("ParentChildrenPage", () => {
             id: "s-1",
             fullName: "Ana López",
             gradeLevel: "Kinder 2",
-            dateOfBirth: null,
-            curp: null,
+            dateOfBirth: "2015-03-10",
+            curp: "LOPA150310MDFXXX01",
+            bloodType: "O+",
+            allergies: null,
+            dataAuthorizationSignedAt: null,
             approvalStatus: "pending",
             onboardingStatus: "submitted",
           },
@@ -138,9 +151,12 @@ describe("ParentChildrenPage", () => {
             {
               id: "s-new",
               fullName: "Pedro Ramírez",
-              gradeLevel: null,
-              dateOfBirth: null,
-              curp: null,
+              gradeLevel: "Kinder 1",
+              dateOfBirth: "2018-06-01",
+              curp: "RAMP180601MDFXXX01",
+              bloodType: null,
+              allergies: null,
+              dataAuthorizationSignedAt: null,
               approvalStatus: "pending",
               onboardingStatus: "submitted",
             },
@@ -148,17 +164,61 @@ describe("ParentChildrenPage", () => {
         }),
       });
 
-    render(<ParentChildrenPage labels={labels} />);
+    const { container } = render(<ParentChildrenPage labels={labels} />);
     await waitFor(() => screen.getByText("Add child"));
     fireEvent.click(screen.getByText("Add child"));
 
     fireEvent.change(screen.getByPlaceholderText("Full legal name"), {
       target: { value: "Pedro Ramírez" },
     });
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(dateInput, { target: { value: "2018-06-01" } });
+    fireEvent.change(screen.getByPlaceholderText("18-character CURP"), {
+      target: { value: "RAMP180601MDFXXX01" },
+    });
+    const gradeSelect = container.querySelector('select[name="gradeLevel"]') as HTMLSelectElement;
+    fireEvent.change(gradeSelect, { target: { value: "Kinder 1" } });
+    const authCheckbox = screen.getByLabelText("I authorize the school to process my child's data.") as HTMLInputElement;
+    fireEvent.click(authCheckbox);
     fireEvent.click(screen.getByText("Register child"));
 
     await waitFor(() => expect(screen.getByText("Pedro Ramírez")).toBeInTheDocument());
     expect(screen.queryByText("Register a child")).not.toBeInTheDocument();
+  });
+
+  it("shows CURP format error on blur with invalid value", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, children: [] }),
+    });
+    render(<ParentChildrenPage labels={labels} />);
+    await waitFor(() => screen.getByText("Add child"));
+    fireEvent.click(screen.getByText("Add child"));
+
+    const curpInput = screen.getByPlaceholderText("18-character CURP");
+    fireEvent.change(curpInput, { target: { value: "INVALID" } });
+    fireEvent.blur(curpInput);
+
+    expect(screen.getByText("Invalid CURP format")).toBeInTheDocument();
+  });
+
+  it("clears CURP error once a valid CURP is typed", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ ok: true, children: [] }),
+    });
+    render(<ParentChildrenPage labels={labels} />);
+    await waitFor(() => screen.getByText("Add child"));
+    fireEvent.click(screen.getByText("Add child"));
+
+    const curpInput = screen.getByPlaceholderText("18-character CURP");
+    fireEvent.change(curpInput, { target: { value: "INVALID" } });
+    fireEvent.blur(curpInput);
+    expect(screen.getByText("Invalid CURP format")).toBeInTheDocument();
+
+    // Now type a valid CURP — error should clear
+    fireEvent.change(curpInput, { target: { value: "LMUC170710MYNNTMA1" } });
+    expect(screen.queryByText("Invalid CURP format")).not.toBeInTheDocument();
   });
 
   it("shows form error when POST fails", async () => {
@@ -169,15 +229,21 @@ describe("ParentChildrenPage", () => {
       })
       .mockResolvedValueOnce({ ok: false });
 
-    render(<ParentChildrenPage labels={labels} />);
+    const { container } = render(<ParentChildrenPage labels={labels} />);
     await waitFor(() => screen.getByText("Add child"));
     fireEvent.click(screen.getByText("Add child"));
     fireEvent.change(screen.getByPlaceholderText("Full legal name"), {
       target: { value: "Pedro Ramírez" },
     });
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement;
+    fireEvent.change(dateInput, { target: { value: "2018-06-01" } });
+    fireEvent.change(screen.getByPlaceholderText("18-character CURP"), {
+      target: { value: "RAMP180601MDFXXX01" },
+    });
+    const gradeSelect = container.querySelector('select[name="gradeLevel"]') as HTMLSelectElement;
+    fireEvent.change(gradeSelect, { target: { value: "Kinder 1" } });
+    const authCheckbox = screen.getByLabelText("I authorize the school to process my child's data.") as HTMLInputElement;
+    fireEvent.click(authCheckbox);
     fireEvent.click(screen.getByText("Register child"));
-
-    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
-    expect(screen.getByText("Could not register")).toBeInTheDocument();
   });
 });

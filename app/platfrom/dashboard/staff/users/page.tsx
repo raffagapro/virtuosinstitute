@@ -34,6 +34,10 @@ export default function StaffUsersDirectoryPage() {
       authorizeModalConfirmLabel={translate(locale, "platform.dashboard.superadmin.usersDirectory.authorize.modal.confirm")}
       authorizeModalSubmittingLabel={translate(locale, "platform.dashboard.superadmin.usersDirectory.authorize.modal.submitting")}
       authorizeModalErrorLabel={translate(locale, "platform.dashboard.superadmin.usersDirectory.authorize.modal.error")}
+      authorizeModalGradeLabel={translate(locale, "platform.dashboard.superadmin.usersDirectory.authorize.modal.grade")}
+      authorizeModalGuardianLabel={translate(locale, "platform.dashboard.superadmin.usersDirectory.authorize.modal.guardian")}
+      linkedStudentsLabel={translate(locale, "platform.dashboard.superadmin.usersDirectory.table.linkedStudents")}
+      linkedParentLabel={translate(locale, "platform.dashboard.superadmin.usersDirectory.table.linkedParent")}
       roleOptionSchoolOwnerLabel={translate(locale, "platform.roles.school_owner")}
       roleOptionDirectionLabel={translate(locale, "platform.roles.direction")}
       roleOptionCoordinationLabel={translate(locale, "platform.roles.coordination")}
@@ -132,6 +136,9 @@ export default function StaffUsersDirectoryPage() {
       profileModalDeactivate={translate(locale, "platform.dashboard.superadmin.usersDirectory.profile.modal.deactivate")}
       profileModalDeactivateConfirm={translate(locale, "platform.dashboard.superadmin.usersDirectory.profile.modal.deactivateConfirm")}
       profileModalDeactivateButton={translate(locale, "platform.dashboard.superadmin.usersDirectory.profile.modal.deactivateButton")}
+      profileModalActivate={translate(locale, "platform.dashboard.superadmin.usersDirectory.profile.modal.activate")}
+      profileModalActivateConfirm={translate(locale, "platform.dashboard.superadmin.usersDirectory.profile.modal.activateConfirm")}
+      profileModalActivateButton={translate(locale, "platform.dashboard.superadmin.usersDirectory.profile.modal.activateButton")}
       profileModalError={translate(locale, "platform.dashboard.superadmin.usersDirectory.profile.modal.error")}
       statusApprovedLabel={translate(locale, "platform.status.approved")}
       statusRejectedLabel={translate(locale, "platform.status.rejected")}

@@ -98,7 +98,7 @@ export function UserProfileForm({ isParent, locale, labels }: UserProfileFormPro
           if (data.parentProfile) {
             setFormData((prev) => ({
               ...prev,
-              curp: data.parentProfile.curp,
+              curp: data.parentProfile.curp ?? "",
               rfc: data.parentProfile.rfc || "",
               profession: data.parentProfile.profession || "",
               invoiceRequired: data.parentProfile.invoiceRequired,
@@ -326,7 +326,7 @@ export function UserProfileForm({ isParent, locale, labels }: UserProfileFormPro
               <input
                 type="text"
                 name="curp"
-                value={formData.curp}
+                value={formData.curp ?? ""}
                 onChange={handleChange}
                 disabled={!isEditing}
                 className="mt-2 w-full rounded-lg border border-[#d6e8f6] px-4 py-2 text-sm text-[#003F60] disabled:bg-[#f5fbff] disabled:text-[#999]"

@@ -455,7 +455,7 @@ Booked appointments between family/guests and school departments.
 | `student_id` | `uuid` FK -> `students.id` nullable | Optional student this appointment relates to |
 | `status` | `text` | `requested`, `confirmed`, `completed`, `canceled`, `no_show` |
 | `requested_by_role` | `text` | `guest`, `parent`, `staff` |
-| `requester_note` | `text` nullable | Note submitted by parent or guest at booking time |
+| `reason` | `text` nullable | Note submitted by parent or guest at booking time |
 | `starts_at` | `timestamptz` | Required |
 | `ends_at` | `timestamptz` | Required |
 | `reminder_sent_at` | `timestamptz` nullable | Set when day-of reminder email is delivered |

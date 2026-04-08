@@ -186,8 +186,10 @@ Superadmin navigation baseline:
   - student status tracking (documents, tuition, grades, appointments)
   - notifications, appointments, schedules, and teacher compensation support
 - Parent dashboard:
+  - **Home page** embeds the school calendar (`ParentSchoolCalendarPage`) directly — no separate sidebar link needed.
   - child onboarding and profile maintenance
-  - school calendar, appointments, notifications, grades, evaluations, and tuition history
+  - appointments: browse open slots, submit requests, view status
+  - notifications, grades, evaluations, and tuition history
 
 ### Calendar & Scheduling Architecture
 

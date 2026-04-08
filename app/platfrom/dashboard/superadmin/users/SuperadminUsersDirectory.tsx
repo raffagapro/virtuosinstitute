@@ -1537,7 +1537,12 @@ export function SuperadminUsersDirectory({
         />
       ) : null}
 
-      {isLoading ? <p className="text-sm text-[#2b5876]">{loadingLabel}</p> : null}
+      {isLoading ? (
+        <div className="flex flex-col items-center gap-3 py-10 text-[#2b5876]">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#eef4fa] border-t-[#2b5876]" />
+          <span className="text-sm">{loadingLabel}</span>
+        </div>
+      ) : null}
       {hasError ? <p className="text-sm text-[#b51d3a]">{errorLabel}</p> : null}
       {!isLoading && !hasError && visibleUsers.length === 0 ? <p className="text-sm text-[#2b5876]">{emptyLabel}</p> : null}
 

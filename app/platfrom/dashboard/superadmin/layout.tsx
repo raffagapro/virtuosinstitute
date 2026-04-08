@@ -45,6 +45,10 @@ export default function SuperadminDashboardLayout({ children }: SuperadminDashbo
                   label: translate(locale, "platform.dashboard.superadmin.sidebar.profile"),
                 },
                 {
+                  href: "/platfrom/dashboard/superadmin/calendar",
+                  label: translate(locale, "platform.dashboard.superadmin.sidebar.calendar"),
+                },
+                {
                   href: "/platfrom/dashboard/superadmin/dev",
                   label: translate(locale, "platform.dashboard.superadmin.sidebar.dev"),
                 },

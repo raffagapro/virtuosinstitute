@@ -198,9 +198,67 @@
 - [ ] Announcement detail view
 
 ### Calendar & Appointments
-- [ ] School events calendar view
-- [ ] Appointment request flows for coordination and direction
-- [ ] Guest/clerk tour-info appointment flow with approval email delivery
+
+#### General School Calendar
+- [x] Unified calendar view (month/week) visible to all authenticated staff and parents
+  - [x] Staff-created school events (important dates, ceremonies, closures) — `POST /api/school-calendar/events`
+  - [x] Auto-generated student birthdays from enrolled student profiles (computed on the fly from `students.date_of_birth`)
+  - [x] Auto-generated staff/faculty birthdays from profile `date_of_birth`
+  - [x] Event type color coding on calendar surface via `AppCalendarGrid`
+  - [x] `GET /api/school-calendar/events?from=&to=` — staff see all types; parents see `school_event` type only
+  - [x] `PATCH /api/school-calendar/events/[id]` — update (school_owner, direction, coordination)
+  - [x] `DELETE /api/school-calendar/events/[id]` — delete (school_owner, direction, coordination)
+  - [x] Staff calendar page — "Escolar" tab with inline create/edit/delete form (authorized roles see form; others read-only)
+  - [x] Parent dashboard — "Calendario Escolar" sidebar link → read-only school calendar page
+
+> **Role access**: Superadmin — read-only (debugging). School owner/direction/coordination — full manage. Clerk/teacher — read-only. Parent — read-only (school events only, no birthdays for privacy).
+
+#### Department Appointment Calendars
+Three booking calendars — clerk (guest tours/info), coordination, direction — each with its own availability configuration.
+
+> **Calendar ownership**: `coordination` role owns `coordination_appointments`; `direction` owns `direction_appointments`; `clerk` owns `clerk_appointments`. `school_owner` can manage all three. Teachers do not have appointment calendars and are not involved in the appointment flow. Superadmin can view all calendars/appointments read-only for debugging.
+
+- [ ] Availability configuration dashboard per calendar owner
+  - [ ] Set working hours (day + time range)
+  - [ ] Choose slot duration: 30 min or 1 hr
+  - [ ] Manually block times (holidays, internal meetings, unavailability) → `calendar_blocks`
+  - [ ] Slots auto-generated from working-hours rules (`availability_rules` → `appointment_slots`)
+  - [ ] Booked slot immediately locked (`status: booked`) — no double booking
+
+#### Parent-Initiated Appointment Requests
+> **Access**: Parents can request appointments with Coordination or Direction only. The Clerk calendar is for guest/public tour requests — parents do not book through the clerk calendar.
+
+- [ ] Parent browses open slots on coordination or direction calendar
+- [ ] Parent selects slot and submits request (optional subject/note, optional student link)
+- [ ] Email sent to department: appointment pending approval
+- [ ] Department approves or rejects from appointment dashboard
+  - [ ] Approval: slot locked, confirmation email sent to parent
+  - [ ] Rejection: slot released, parent notified by email
+- [ ] Day-of reminder email to both parent and staff
+- [ ] Confirmation email includes link to add event to Google Calendar (ICS / gcal link)
+
+#### Staff-Initiated Appointment Requests
+- [ ] Coordination or direction initiates appointment with a parent
+  - [ ] Parent receives email with a link to the department's open-slot calendar
+  - [ ] Parent selects suitable slot and confirms
+  - [ ] Staff notified of confirmed slot
+  - [ ] Appointment may or may not be linked to a student
+
+#### Appointment Resolution & Student Records
+> **Student linking**: Appointments never originate from a student (students do not log in). However, any appointment can optionally be linked to a student (`appointments.student_id`). When staff writes a resolution note, they may choose to include it in the student's school record — this saves the note with `appointment_notes.linked_student_id` set, making it visible in the student's profile history.
+
+- [ ] After appointment, staff adds a resolution note
+  - [ ] Outcome field: `completed`, `no_show`, `rescheduled`, `canceled`
+  - [ ] Note body: internal text note
+  - [ ] If linked to a student, note is saved to the student school record
+  - [ ] Resolution notes are staff-internal (not visible to parent)
+
+#### Guest / Clerk Tour Calendar
+- [ ] Clerk calendar publicly accessible (no auth) for guest tour/info requests
+  - [ ] Guest selects an open slot and submits request form (name, email, phone, grade of interest, notes)
+  - [ ] System creates `guest_tour_request` and notifies clerk by email
+  - [ ] Clerk approves or rejects; guest receives email confirmation
+  - [ ] Approved clerk appointments follow same resolution/outcome flow as department appointments
 
 ### Profile
 - [x] Parent profile page (contact info + preferred language)
@@ -251,7 +309,12 @@
 ### Announcement Management
 - [ ] Staff/admin announcement creation
 - [ ] Publish targeting (school-wide vs selected classes)
-- [ ] Scheduled notification campaigns with audience targeting (`parents`, `staff`, `both`)
+- [x] Scheduled notification campaigns with audience targeting (`parents`, `staff`, `both`)
+  - [x] School event form: "Notify all parents" (immediate email + in-app) and "Send reminder on event day" (scheduled) checkboxes
+  - [x] `POST /api/school-calendar/events` creates `notification_campaigns` + `notification_deliveries` and sends Brevo emails
+  - [x] `GET /api/cron/send-notifications` processes scheduled campaigns (Vercel cron, daily 08:00 UTC)
+  - [x] Parent notifications panel: `GET /api/parent/notifications`, `PATCH /api/parent/notifications/[id]` (mark read)
+  - [x] Parent dashboard `/notifications` page with unread/read state
 - [ ] Optional banner/image attachments for dashboard carousel placement
 
 ### User/Relationship Management
@@ -285,8 +348,10 @@
 - [ ] Teacher class-assignment management and directory visibility
 
 ### Scheduling & Payroll Support
-- [ ] Appointment queue management with approval, cancelation, completion, and notes
-- [ ] Open-hours configuration for appointment-generating departments
+- [ ] Staff appointment management dashboard — queue view, approve/reject, outcome notes
+- [ ] Availability configuration dashboard per calendar owner (working hours, slot duration, manual blocks)
+- [ ] Day-of appointment reminder email jobs (parent + staff)
+- [ ] Google Calendar / ICS export link included in appointment confirmation emails
 
 ## Phase 6 — Post-MVP Extensions
 

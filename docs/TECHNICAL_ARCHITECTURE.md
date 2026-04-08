@@ -186,8 +186,69 @@ Superadmin navigation baseline:
   - student status tracking (documents, tuition, grades, appointments)
   - notifications, appointments, schedules, and teacher compensation support
 - Parent dashboard:
+  - **Home page** embeds the school calendar (`ParentSchoolCalendarPage`) directly — no separate sidebar link needed.
   - child onboarding and profile maintenance
-  - school calendar, appointments, notifications, grades, evaluations, and tuition history
+  - appointments: browse open slots, submit requests, view status
+  - notifications, grades, evaluations, and tuition history
+
+### Calendar & Scheduling Architecture
+
+#### Calendar Surfaces
+Four calendar surfaces, each backed by a row in the `calendars` table:
+
+| `calendar_type` | Owner | Access |
+|---|---|---|
+| `school_events` | School / all staff | Read: all authenticated users; Write: staff |
+| `coordination_appointments` | Coordination staff | Booking: parents; Manage: coordination |
+| `direction_appointments` | Direction staff | Booking: parents; Manage: direction |
+| `clerk_appointments` | Clerk | Booking: guests (no auth); Manage: clerk |
+
+The general school calendar (`school_events`) also aggregates auto-generated birthday events from `students.date_of_birth` and staff `profiles.date_of_birth`.
+
+#### Availability → Slot Generation Pipeline
+```
+availability_rules (working hours, weekday, start/end time, slot_minutes: 30|60)
+     ↓  slot generation job
+appointment_slots  (starts_at, ends_at, status: available | held | booked | blocked)
+                           ↑
+                   calendar_blocks (manual blocks → overlapping slots set to blocked)
+```
+- Slot duration is set per calendar owner: 30 min or 60 min.
+- When an appointment is confirmed, the linked slot status is atomically updated to `booked`.
+- Manual blocks via `calendar_blocks` mark all overlapping `appointment_slots` as `blocked`.
+
+#### Appointment State Machine
+```
+[parent/guest selects slot] → requested
+       ↓ staff approves          ↓ staff rejects
+   confirmed                  (slot released → available)
+       ↓ date passes or staff logs outcome
+   completed | no_show | rescheduled | canceled
+```
+- `appointments.student_id` is optional; set when the appointment concerns a specific enrolled student.
+- On `completed` or `no_show`, staff can attach an `appointment_notes` record with outcome + text.
+- If `appointment_notes.linked_student_id` is set, the note is surfaced in the student's profile record.
+
+#### Email Trigger Map
+| Event | Recipients | Delivery |
+|---|---|---|
+| Appointment requested | Department staff | Brevo via `lib/invite-mailer.ts` |
+| Appointment confirmed | Requesting parent | Brevo — includes ICS/Google Calendar link |
+| Appointment rejected | Requesting parent | Brevo |
+| Day-of reminder | Parent + staff | Brevo job runs on appointment date |
+| Staff initiates with parent | Target parent | Brevo — includes link to staff open-slot calendar |
+| Guest tour confirmed | Guest (email address from form) | Brevo |
+
+#### Google Calendar Integration
+- Confirmation emails include a pre-built Google Calendar add link:
+  `https://calendar.google.com/calendar/r/eventedit?...` with event fields URL-encoded.
+- An `.ics` file attachment or download link is included as a fallback for non-Google clients.
+- No OAuth scopes required on the server side; calendar add is user-initiated from the email.
+
+#### Guest / Clerk Path (No Auth)
+- Public route `/appointments/clerk` (or similar) renders the clerk's open slots without requiring sign-in.
+- Slot selection submits to `POST /api/appointments/guest` which creates a `guest_tour_requests` row.
+- Clerk dashboard shows pending guest requests and can approve (converts to full `appointments` record) or reject.
 
 ### MVP Boundary
 
@@ -212,6 +273,12 @@ Superadmin navigation baseline:
     - register child — `POST /api/parent/children`
     - edit child profile — `PATCH /api/parent/children/[id]` (click child name → pre-filled modal)
     - enrollment form download button in page header
+    - school calendar view (school events + student/staff birthdays)
+    - appointment booking: browse open slots on coordination/direction calendar, submit request
+    - confirmed appointment includes Google Calendar / ICS link and day-of reminder email
+  - Clerk calendar:
+    - publicly accessible (no auth) for guest tour/info slot selection → `guest_tour_requests`
+    - clerk manages own availability, approves/rejects guest requests, logs outcomes
 - Auth provider: Supabase Auth with Google OAuth as the primary sign-in provider.
 - Optional QA/future path: feature-flagged email/password sign-in can be enabled per environment for controlled testing or staged rollout.
 - App roles are split into platform-level and operational domains.

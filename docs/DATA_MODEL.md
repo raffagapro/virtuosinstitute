@@ -392,10 +392,12 @@ General events shown on calendar surfaces.
 | `calendar_id` | `uuid` FK -> `calendars.id` | Required |
 | `title` | `text` | Event title |
 | `description` | `text` nullable | Optional details |
-| `event_type` | `text` | `school_event`, `birthday`, `teacher_shift`, `important_date` |
+| `event_type` | `text` | `school_event`, `student_birthday`, `staff_birthday`, `teacher_shift`, `important_date` |
+| `related_profile_id` | `uuid` FK -> `profiles.id` nullable | Staff/parent whose birthday this represents |
+| `related_student_id` | `uuid` FK -> `students.id` nullable | Student whose birthday this represents |
 | `starts_at` | `timestamptz` | Required |
 | `ends_at` | `timestamptz` | Required |
-| `created_by_profile_id` | `uuid` FK -> `profiles.id` | Creator |
+| `created_by_profile_id` | `uuid` FK -> `profiles.id` | Creator (null for auto-generated events) |
 | `created_at` | `timestamptz` | Default `now()` |
 
 #### `availability_rules`
@@ -408,14 +410,14 @@ Recurring open-hours rules used to generate appointment slots.
 | `weekday` | `int` | 0-6 or 1-7 by implementation choice |
 | `start_time` | `time` | Required |
 | `end_time` | `time` | Required |
-| `slot_minutes` | `int` | Example: 20, 30, 60 |
+| `slot_minutes` | `int` | `30` or `60` (slot duration in minutes) |
 | `effective_from` | `date` | Required |
 | `effective_to` | `date` nullable | Optional end date |
 | `created_by_profile_id` | `uuid` FK -> `profiles.id` | Creator |
 | `created_at` | `timestamptz` | Default `now()` |
 
 #### `appointment_slots`
-Generated bookable slots for appointment calendars.
+Generated bookable slots for appointment calendars. When a slot is booked or covered by a `calendar_block`, its status is updated immediately to prevent double booking.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -424,6 +426,20 @@ Generated bookable slots for appointment calendars.
 | `starts_at` | `timestamptz` | Required |
 | `ends_at` | `timestamptz` | Required |
 | `status` | `text` | `available`, `held`, `booked`, `blocked` |
+| `booked_by_appointment_id` | `uuid` FK -> `appointments.id` nullable | Set when status moves to `booked` |
+| `created_at` | `timestamptz` | Default `now()` |
+
+#### `calendar_blocks`
+Manually blocked time ranges on a calendar (holidays, internal meetings, unavailability). Any `appointment_slots` that overlap a block are automatically marked `blocked`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` PK | Block id |
+| `calendar_id` | `uuid` FK -> `calendars.id` | Required |
+| `starts_at` | `timestamptz` | Required |
+| `ends_at` | `timestamptz` | Required |
+| `reason` | `text` nullable | Optional label shown to calendar owner |
+| `created_by_profile_id` | `uuid` FK -> `profiles.id` | Creator |
 | `created_at` | `timestamptz` | Default `now()` |
 
 #### `appointments`
@@ -433,24 +449,29 @@ Booked appointments between family/guests and school departments.
 |---|---|---|
 | `id` | `uuid` PK | Appointment id |
 | `calendar_id` | `uuid` FK -> `calendars.id` | Required |
-| `slot_id` | `uuid` FK -> `appointment_slots.id` nullable | Optional if manually scheduled |
+| `slot_id` | `uuid` FK -> `appointment_slots.id` nullable | Slot locked on booking |
 | `requester_profile_id` | `uuid` FK -> `profiles.id` nullable | Parent/staff requester |
 | `guest_request_id` | `uuid` FK -> `guest_tour_requests.id` nullable | Guest-origin request |
+| `student_id` | `uuid` FK -> `students.id` nullable | Optional student this appointment relates to |
 | `status` | `text` | `requested`, `confirmed`, `completed`, `canceled`, `no_show` |
 | `requested_by_role` | `text` | `guest`, `parent`, `staff` |
+| `reason` | `text` nullable | Note submitted by parent or guest at booking time |
 | `starts_at` | `timestamptz` | Required |
 | `ends_at` | `timestamptz` | Required |
+| `reminder_sent_at` | `timestamptz` nullable | Set when day-of reminder email is delivered |
 | `created_at` | `timestamptz` | Default `now()` |
 
 #### `appointment_notes`
-Internal record of appointment outcomes and follow-up notes.
+Internal record of appointment outcomes and resolution notes. If the appointment is linked to a student, this note becomes part of the student school record. Notes are staff-internal and not visible to parents.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | `uuid` PK | Note id |
 | `appointment_id` | `uuid` FK -> `appointments.id` | Required |
 | `author_profile_id` | `uuid` FK -> `profiles.id` | Staff author |
-| `note_body` | `text` | Internal note |
+| `outcome` | `text` nullable | `completed`, `no_show`, `rescheduled`, `canceled` |
+| `note_body` | `text` | Internal note text |
+| `linked_student_id` | `uuid` FK -> `students.id` nullable | Set when note is relevant to a specific student record |
 | `created_at` | `timestamptz` | Default `now()` |
 
 #### `teacher_schedule_blocks`
@@ -525,7 +546,7 @@ MVP note:
 - Direct gateway methods (`stripe`, `mercado_pago`) are after-MVP extensions.
 
 #### `guest_tour_requests`
-Public (non-auth) tour/info requests submitted through the guest calendar flow.
+Public (non-auth) tour/info requests submitted through the guest/clerk calendar flow. Clerk reviews and confirms/rejects via the clerk appointment calendar.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -567,6 +588,7 @@ Public (non-auth) tour/info requests submitted through the guest calendar flow.
 	- `thread_participants(thread_id, profile_id)`
 	- `teacher_class_assignments(teacher_profile_id, class_id, subject_name)`
 	- `tuition_quotes(payment_reference)`
+	- `appointment_slots(calendar_id, starts_at)` — prevents duplicate slot generation
 - Add indexes:
 	- `school_memberships(profile_id, school_role)`
 	- `students(curp)`
@@ -577,6 +599,9 @@ Public (non-auth) tour/info requests submitted through the guest calendar flow.
 	- `announcements(published_at desc)`
 	- `guest_tour_requests(requested_datetime)`
 	- `appointments(status, starts_at)`
+	- `appointments(student_id)` — for student record lookups
+	- `appointment_slots(calendar_id, status, starts_at)` — for open-slot queries
+	- `calendar_blocks(calendar_id, starts_at, ends_at)` — for overlap detection
 	- `payment_records(student_id, status, paid_at)`
 	- `notification_deliveries(profile_id, in_app_status)`
 - Add trigger function to maintain `updated_at` on mutable tables.

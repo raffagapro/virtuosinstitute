@@ -41,6 +41,10 @@ export default function StaffDashboardLayout({ children }: StaffDashboardLayoutP
                   showPendingAuthBadge: true,
                 },
                 {
+                  href: "/platfrom/dashboard/staff/calendar",
+                  label: translate(locale, "platform.dashboard.staff.sidebar.calendar"),
+                },
+                {
                   href: "/platfrom/dashboard/staff/profile",
                   label: translate(locale, "platform.dashboard.staff.sidebar.profile"),
                 },

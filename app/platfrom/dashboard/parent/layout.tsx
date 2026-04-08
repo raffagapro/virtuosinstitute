@@ -39,6 +39,14 @@ export default function ParentDashboardLayout({ children }: ParentDashboardLayou
                   label: translate(locale, "platform.dashboard.parent.sidebar.children"),
                 },
                 {
+                  href: "/platfrom/dashboard/parent/appointments",
+                  label: translate(locale, "platform.dashboard.parent.sidebar.appointments"),
+                },
+                {
+                  href: "/platfrom/dashboard/parent/notifications",
+                  label: translate(locale, "platform.dashboard.parent.sidebar.notifications"),
+                },
+                {
                   href: "/platfrom/dashboard/parent/profile",
                   label: translate(locale, "platform.dashboard.parent.sidebar.profile"),
                 },

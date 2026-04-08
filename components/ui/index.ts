@@ -11,3 +11,5 @@ export { AppDashboardSidebar } from "./AppDashboardSidebar";
 export { AppPageLoader } from "./AppPageLoader";
 export { AppUsersDirectoryControls } from "./AppUsersDirectoryControls";
 export { UserProfileForm } from "./UserProfileForm";
+export { AppCalendarGrid } from "./AppCalendarGrid";
+export type { CalendarEvent, AppCalendarGridLabels, AppCalendarGridProps } from "./AppCalendarGrid";

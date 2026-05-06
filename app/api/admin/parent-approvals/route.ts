@@ -128,7 +128,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
     }
 
-    const actorRoles = (actorMembershipRows as Array<{ school_role: string }> | null) ?? [];
+    const actorRoles = (actorMembershipRows as unknown as Array<{ school_role: string }> | null) ?? [];
     isOwner = actorRoles.some((role) => role.school_role === "school_owner");
     isCoordination = actorRoles.some((role) => role.school_role === "coordination");
   }
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
 
   const targetRole = getEffectiveManagementRole({
     platformRole: (targetProfile as { platform_role: string | null } | null)?.platform_role ?? null,
-    memberships: ((targetMembershipRows as Array<{ school_role: string; is_active: boolean; approval_status: string }> | null) ?? []),
+    memberships: ((targetMembershipRows as unknown as Array<{ school_role: string; is_active: boolean; approval_status: string }> | null) ?? []),
   });
 
   if (!canManageTargetRole(actorScope, targetRole)) {

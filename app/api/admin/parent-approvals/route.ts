@@ -182,7 +182,7 @@ export async function POST(request: Request) {
   if (payload.status === "approved") {
     const { error: deactivateOtherMembershipsError } = await adminSupabase
       .from("school_memberships")
-      .update({ is_active: false })
+      .update({ is_active: false } as never)
       .eq("profile_id", payload.profileId)
       .eq("is_active", true);
 

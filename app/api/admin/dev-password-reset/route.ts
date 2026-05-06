@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     .from("profiles")
     .select("id")
     .eq("email", email)
-    .maybeSingle();
+    .maybeSingle<{ id: string }>();
 
   if (targetProfileError) {
     return NextResponse.json({ ok: false, reason: "profile-read-failed" }, { status: 500 });

@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "actor-profile-read-failed" }, { status: 500 });
   }
 
-  const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+  const isSuperadmin = (actorProfile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   let isOwner = false;
   let isCoordination = false;
@@ -88,11 +88,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: "actor-membership-read-failed" }, { status: 500 });
     }
 
-    isOwner = ((actorMembershipRows as Array<{ school_role: string }> | null) ?? []).some(
+    isOwner = ((actorMembershipRows as unknown as Array<{ school_role: string }> | null) ?? []).some(
       (membership) => membership.school_role === "school_owner"
     );
 
-    isCoordination = ((actorMembershipRows as Array<{ school_role: string }> | null) ?? []).some(
+    isCoordination = ((actorMembershipRows as unknown as Array<{ school_role: string }> | null) ?? []).some(
       (membership) => membership.school_role === "coordination"
     );
   }
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "target-profile-read-failed" }, { status: 500 });
   }
 
-  if ((targetProfile as { platform_role: string | null }).platform_role === "superadmin") {
+  if ((targetProfile as unknown as { platform_role: string | null }).platform_role === "superadmin") {
     return NextResponse.json({ ok: false, reason: "forbidden-target" }, { status: 403 });
   }
 
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "membership-read-failed" }, { status: 500 });
   }
 
-  const existingMemberships = (existingMembershipRows as Array<{
+  const existingMemberships = (existingMembershipRows as unknown as Array<{
     id: string;
     school_role: string;
     is_active: boolean;
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
   }> | null) ?? [];
 
   const targetRole = getEffectiveManagementRole({
-    platformRole: (targetProfile as { platform_role: string | null }).platform_role,
+    platformRole: (targetProfile as unknown as { platform_role: string | null }).platform_role,
     memberships: existingMemberships,
   });
 

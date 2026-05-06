@@ -86,7 +86,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!calendarRows?.length) {
     return NextResponse.json({ ok: false, reason: "calendar-not-found" }, { status: 404 });
   }
-  const calendarId: string = (calendarRows[0] as { id: string }).id;
+  const calendarId: string = (calendarRows[0] as unknown as { id: string }).id;
 
   // Verify the slot is still available (no active appointment overlaps).
   const { data: conflicts } = await adminSupabase

@@ -18,10 +18,10 @@ interface ProfileMembership {
 }
 
 interface ParentProfileDetails {
-  curp: string;
+  curp: string | null;
   rfc: string | null;
   profession: string | null;
-  invoiceRequired: boolean;
+  invoiceRequired: boolean | null;
 }
 
 interface StudentProfileDetails {
@@ -112,7 +112,7 @@ async function resolveSuperadminAdminClient(accessToken: string): Promise<
     };
   }
 
-  const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+  const isSuperadmin = (actorProfile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   let isOwner = false;
   let isCoordination = false;
@@ -132,7 +132,7 @@ async function resolveSuperadminAdminClient(accessToken: string): Promise<
       };
     }
 
-    const actorRoles = (actorMembershipRows as Array<{ school_role: string }> | null) ?? [];
+    const actorRoles = (actorMembershipRows as unknown as Array<{ school_role: string }> | null) ?? [];
     isOwner = actorRoles.some((role) => role.school_role === "school_owner");
     isCoordination = actorRoles.some((role) => role.school_role === "coordination");
   }
@@ -166,6 +166,16 @@ async function fetchProfileComposite(adminSupabase: ReturnType<typeof getSupabas
     return { ok: false as const, error: profileError?.message || "Profile not found" };
   }
 
+  const typedProfileRow = profileRow as unknown as {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    date_of_birth: string | null;
+    preferred_locale: string | null;
+    platform_role: string | null;
+  };
+
   const { data: membershipRows, error: membershipError } = await adminSupabase
     .from("school_memberships")
     .select("school_role, approval_status, is_active")
@@ -190,8 +200,14 @@ async function fetchProfileComposite(adminSupabase: ReturnType<typeof getSupabas
     .maybeSingle();
 
   const studentProfileRow = studentProfileRowRaw as StudentProfileRow | null;
+  const typedParentProfileRow = parentProfileRow as unknown as {
+    curp: string | null;
+    rfc: string | null;
+    profession: string | null;
+    invoice_required: boolean | null;
+  } | null;
 
-  const memberships = ((membershipRows as Array<{ school_role: string; approval_status: ProfileMembership["approvalStatus"]; is_active: boolean }> | null) ?? []).map((row) => ({
+  const memberships = ((membershipRows as unknown as Array<{ school_role: string; approval_status: ProfileMembership["approvalStatus"]; is_active: boolean }> | null) ?? []).map((row) => ({
     schoolRole: row.school_role,
     approvalStatus: row.approval_status,
     isActive: row.is_active,
@@ -200,22 +216,22 @@ async function fetchProfileComposite(adminSupabase: ReturnType<typeof getSupabas
   const isActive = memberships.some((membership) => membership.isActive && membership.approvalStatus === "approved");
 
   const profile: ProfilePayload = {
-    id: profileRow.id,
-    fullName: profileRow.full_name,
-    email: profileRow.email,
-    phone: profileRow.phone,
-    dateOfBirth: profileRow.date_of_birth,
-    preferredLocale: profileRow.preferred_locale,
-    platformRole: profileRow.platform_role,
+    id: typedProfileRow.id,
+    fullName: typedProfileRow.full_name,
+    email: typedProfileRow.email,
+    phone: typedProfileRow.phone,
+    dateOfBirth: typedProfileRow.date_of_birth,
+    preferredLocale: typedProfileRow.preferred_locale ?? "es-MX",
+    platformRole: typedProfileRow.platform_role,
     isActive,
   };
 
-  const parentProfile = parentProfileRow
+  const parentProfile = typedParentProfileRow
     ? {
-      curp: parentProfileRow.curp,
-      rfc: parentProfileRow.rfc,
-      profession: parentProfileRow.profession,
-      invoiceRequired: parentProfileRow.invoice_required,
+      curp: typedParentProfileRow.curp,
+      rfc: typedParentProfileRow.rfc,
+      profession: typedParentProfileRow.profession,
+      invoiceRequired: typedParentProfileRow.invoice_required,
     }
     : null;
 

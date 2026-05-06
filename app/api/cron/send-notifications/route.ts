@@ -37,7 +37,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   }
 
   const campaigns = (
-    dueCampaigns as Array<{ id: string; title: string; subject: string; body: string }> | null
+    dueCampaigns as unknown as Array<{ id: string; title: string; subject: string; body: string }> | null
   ) ?? [];
 
   let processed = 0;
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq("email_status", "pending");
 
     const pendingDeliveries = (
-      deliveries as Array<{ id: string; profile_id: string }> | null
+      deliveries as unknown as Array<{ id: string; profile_id: string }> | null
     ) ?? [];
 
     if (pendingDeliveries.length > 0) {
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         .in("id", profileIds);
 
       const emailMap = new Map(
-        ((profiles as Array<{ id: string; email: string | null }> | null) ?? []).map((p) => [
+        ((profiles as unknown as Array<{ id: string; email: string | null }> | null) ?? []).map((p) => [
           p.id,
           p.email,
         ])

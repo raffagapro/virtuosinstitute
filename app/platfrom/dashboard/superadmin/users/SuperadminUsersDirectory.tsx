@@ -1140,12 +1140,11 @@ export function SuperadminUsersDirectory({
         setIsTransferContextLoading(false);
       }
 
-      const sortMembershipsByPriority = (memberships: ProfileMembership[]) =>
-        memberships.sort((left, right) => {
-          const leftPriority = membershipRolePriority[left.schoolRole] ?? Number.MAX_SAFE_INTEGER;
-          const rightPriority = membershipRolePriority[right.schoolRole] ?? Number.MAX_SAFE_INTEGER;
-          return leftPriority - rightPriority;
-        });
+      const sortMembershipsByPriority = (left: ProfileMembership, right: ProfileMembership) => {
+        const leftPriority = membershipRolePriority[left.schoolRole] ?? Number.MAX_SAFE_INTEGER;
+        const rightPriority = membershipRolePriority[right.schoolRole] ?? Number.MAX_SAFE_INTEGER;
+        return leftPriority - rightPriority;
+      };
 
       const activeApprovedMemberships = (payload.memberships || [])
         .filter((membership) => membership.isActive && membership.approvalStatus === "approved")

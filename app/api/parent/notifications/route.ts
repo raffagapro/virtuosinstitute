@@ -37,7 +37,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .eq("is_active", true)
     .eq("approval_status", "approved");
 
-  const roles = ((memberships as Array<{ school_role: string }> | null) ?? []).map(
+  const roles = ((memberships as unknown as Array<{ school_role: string }> | null) ?? []).map(
     (m) => m.school_role
   );
 

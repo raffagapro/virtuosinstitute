@@ -44,7 +44,7 @@ function getBearerToken(request: NextRequest): string | null {
 }
 
 function isMissingColumnError(error: unknown, columnName: string): boolean {
-  const dbError = error as { code?: string; message?: string } | null;
+  const dbError = error as unknown as { code?: string; message?: string } | null;
   if (!dbError) return false;
 
   if (dbError.code === "42703") return true;
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<ProfileRes
       .select("school_role")
       .eq("profile_id", user.id);
 
-    const isParent = membershipRoles?.some((m) => m.school_role === "parent");
+    const isParent = membershipRoles?.some((m: { school_role: string }) => m.school_role === "parent");
 
     if (isParent) {
       const { data: parentProfile } = await adminSupabase
@@ -220,7 +220,7 @@ export async function PATCH(request: NextRequest): Promise<NextResponse<ProfileR
       .select("school_role")
       .eq("profile_id", user.id);
 
-    const isParent = membershipRoles?.some((m) => m.school_role === "parent");
+    const isParent = membershipRoles?.some((m: { school_role: string }) => m.school_role === "parent");
 
     const hasParentFieldInPayload =
       Object.prototype.hasOwnProperty.call(body, "curp") ||

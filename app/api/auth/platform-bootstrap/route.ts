@@ -180,8 +180,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "role-read-failed" }, { status: 500 });
   }
 
-  const platformRole = ((profileRow as { platform_role: string | null } | null)?.platform_role ?? null);
-  const schoolRoles = ((roleRows as MembershipRoleRow[] | null) ?? []).map((row) => row.school_role);
+  const platformRole = ((profileRow as unknown as { platform_role: string | null } | null)?.platform_role ?? null);
+  const schoolRoles = ((roleRows as unknown as MembershipRoleRow[] | null) ?? []).map((row) => row.school_role);
 
   const hasElevatedAccess = platformRole === "superadmin" || schoolRoles.length > 0;
 
@@ -197,7 +197,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "membership-read-failed" }, { status: 500 });
   }
 
-  let membership = ((existingMembershipRows as MembershipRow[] | null) ?? [])[0] ?? null;
+  let membership = ((existingMembershipRows as unknown as MembershipRow[] | null) ?? [])[0] ?? null;
 
   if (!membership && !hasElevatedAccess) {
     const { error: insertMembershipError } = await adminSupabase
@@ -225,7 +225,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: "membership-read-failed" }, { status: 500 });
     }
 
-    membership = ((createdMembershipRows as MembershipRow[] | null) ?? [])[0] ?? null;
+    membership = ((createdMembershipRows as unknown as MembershipRow[] | null) ?? [])[0] ?? null;
   }
 
   const { data: approvalRows, error: approvalReadError } = await adminSupabase
@@ -239,7 +239,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "approval-read-failed" }, { status: 500 });
   }
 
-  let approval = ((approvalRows as ParentApprovalRow[] | null) ?? [])[0] ?? null;
+  let approval = ((approvalRows as unknown as ParentApprovalRow[] | null) ?? [])[0] ?? null;
   let didCreateApprovalRequest = false;
 
   if (!approval && !hasElevatedAccess) {
@@ -266,7 +266,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: "approval-read-failed" }, { status: 500 });
     }
 
-    approval = ((createdApprovalRows as ParentApprovalRow[] | null) ?? [])[0] ?? null;
+    approval = ((createdApprovalRows as unknown as ParentApprovalRow[] | null) ?? [])[0] ?? null;
   }
 
   const status = hasElevatedAccess

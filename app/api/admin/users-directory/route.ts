@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }
 
-  const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+  const isSuperadmin = (actorProfile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   let isOwner = false;
   let isCoordination = false;
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
     }
 
-    const actorRoles = (actorMembershipRows as Array<{ school_role: string }> | null) ?? [];
+    const actorRoles = (actorMembershipRows as unknown as Array<{ school_role: string }> | null) ?? [];
     isOwner = actorRoles.some((role) => role.school_role === "school_owner");
     isCoordination = actorRoles.some((role) => role.school_role === "coordination");
   }
@@ -120,13 +120,13 @@ export async function GET(request: Request) {
   }
 
   const membershipByProfileId = new Map<string, MembershipRoleRow[]>();
-  ((membershipRows as MembershipRoleRow[] | null) ?? []).forEach((row) => {
+  ((membershipRows as unknown as MembershipRoleRow[] | null) ?? []).forEach((row) => {
     const existing = membershipByProfileId.get(row.profile_id) ?? [];
     existing.push(row);
     membershipByProfileId.set(row.profile_id, existing);
   });
 
-  const users = ((profileRows as Array<{
+  const users = ((profileRows as unknown as Array<{
     id: string;
     full_name: string | null;
     email: string | null;
@@ -184,7 +184,7 @@ export async function GET(request: Request) {
     .select("id, full_name, date_of_birth, curp, grade_level, blood_type, allergies, approval_status, onboarding_status, data_authorization_signed_at, created_at")
     .order("created_at", { ascending: false });
 
-  const studentList = (studentRows as Array<{
+  const studentList = (studentRows as unknown as Array<{
     id: string;
     full_name: string | null;
     date_of_birth: string | null;
@@ -208,7 +208,7 @@ export async function GET(request: Request) {
       .in("student_id", studentIds);
 
     const uniqueGuardianProfileIds = [
-      ...new Set(((guardianRows as Array<{ student_id: string; parent_profile_id: string }> | null) ?? []).map((g) => g.parent_profile_id)),
+      ...new Set(((guardianRows as unknown as Array<{ student_id: string; parent_profile_id: string }> | null) ?? []).map((g) => g.parent_profile_id)),
     ];
 
     if (uniqueGuardianProfileIds.length > 0) {
@@ -218,10 +218,10 @@ export async function GET(request: Request) {
         .in("id", uniqueGuardianProfileIds);
 
       const guardianProfileMap = new Map<string, { fullName: string | null; email: string | null }>();
-      ((guardianProfileRows as Array<{ id: string; full_name: string | null; email: string | null }> | null) ?? [])
+      ((guardianProfileRows as unknown as Array<{ id: string; full_name: string | null; email: string | null }> | null) ?? [])
         .forEach((p) => guardianProfileMap.set(p.id, { fullName: p.full_name, email: p.email }));
 
-      ((guardianRows as Array<{ student_id: string; parent_profile_id: string }> | null) ?? [])
+      ((guardianRows as unknown as Array<{ student_id: string; parent_profile_id: string }> | null) ?? [])
         .forEach((g) => {
           if (!guardianByStudentId.has(g.student_id)) {
             const profile = guardianProfileMap.get(g.parent_profile_id);
@@ -249,7 +249,7 @@ export async function GET(request: Request) {
   // Attach linkedStudents to every profile-based user entry
   const usersWithLinked = users.map((u) => ({
     ...u,
-    linkedStudents: studentsByGuardianId.get(u.id) ?? ([] as Array<{ id: string; fullName: string | null; gradeLevel: string | null }>),
+    linkedStudents: studentsByGuardianId.get(u.id) ?? ([] as unknown as Array<{ id: string; fullName: string | null; gradeLevel: string | null }>),
   }));
 
   const studentEntries = studentList.map((s) => {

@@ -43,7 +43,7 @@ export async function PATCH(
     .eq("id", actorData.user.id)
     .maybeSingle();
 
-  const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+  const isSuperadmin = (actorProfile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   if (!isSuperadmin) {
     const { data: actorMembershipRows } = await adminSupabase
@@ -53,7 +53,7 @@ export async function PATCH(
       .eq("is_active", true)
       .eq("approval_status", "approved");
 
-    const actorRoles = (actorMembershipRows as Array<{ school_role: string }> | null) ?? [];
+    const actorRoles = (actorMembershipRows as unknown as Array<{ school_role: string }> | null) ?? [];
     const hasAccess = actorRoles.some(
       (r) => r.school_role === "school_owner" || r.school_role === "coordination"
     );

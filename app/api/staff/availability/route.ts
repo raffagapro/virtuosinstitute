@@ -25,7 +25,7 @@ async function resolveActorCalendar(
     .eq("is_active", true)
     .eq("approval_status", "approved");
 
-  const roles: string[] = ((memberships as Array<{ school_role: string }> | null) ?? []).map(
+  const roles: string[] = ((memberships as unknown as Array<{ school_role: string }> | null) ?? []).map(
     (m) => m.school_role
   );
   if (!roles.some((r) => AVAILABILITY_MANAGER_ROLES.includes(r))) {
@@ -59,7 +59,7 @@ async function resolveActorCalendar(
     return { error: "calendar-not-found", status: 404 };
   }
 
-  return { calendarId: (calRow as { id: string }).id, calendarType };
+  return { calendarId: (calRow as unknown as { id: string }).id, calendarType };
 }
 
 /**

@@ -48,7 +48,7 @@ export async function DELETE(
     .eq("is_active", true)
     .eq("approval_status", "approved");
 
-  const roles: string[] = ((memberships as Array<{ school_role: string }> | null) ?? []).map(
+  const roles: string[] = ((memberships as unknown as Array<{ school_role: string }> | null) ?? []).map(
     (m) => m.school_role
   );
   if (!roles.some((r) => BLOCK_MANAGER_ROLES.includes(r))) {
@@ -67,7 +67,7 @@ export async function DELETE(
 
   const isSchoolOwner = roles.includes("school_owner");
   if (!isSchoolOwner) {
-    const blockCalType = ((block as { calendars: { calendar_type: string } | null }).calendars)
+    const blockCalType = ((block as unknown as { calendars: { calendar_type: string } | null }).calendars)
       ?.calendar_type;
     const ownedTypes = roles.map((r) => ROLE_CALENDAR_MAP[r]).filter(Boolean);
     if (!blockCalType || !ownedTypes.includes(blockCalType)) {

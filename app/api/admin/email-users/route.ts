@@ -153,7 +153,7 @@ export async function POST(request: Request) {
     .eq("id", actorData.user.id)
     .maybeSingle();
 
-  if (actorProfileError || (actorProfile as { platform_role: string | null } | null)?.platform_role !== "superadmin") {
+  if (actorProfileError || (actorProfile as unknown as { platform_role: string | null } | null)?.platform_role !== "superadmin") {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }
 

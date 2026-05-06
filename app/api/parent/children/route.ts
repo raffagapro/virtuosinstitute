@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, reason: "membership-check-failed" }, { status: 500 });
   }
 
-  const isApprovedParent = ((membershipRows as Array<{ school_role: string }> | null) ?? []).length > 0;
+  const isApprovedParent = ((membershipRows as unknown as Array<{ school_role: string }> | null) ?? []).length > 0;
   if (!isApprovedParent) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }
@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, reason: "children-read-failed" }, { status: 500 });
   }
 
-  const studentIds = ((guardianRows as Array<{ student_id: string }> | null) ?? []).map(
+  const studentIds = ((guardianRows as unknown as Array<{ student_id: string }> | null) ?? []).map(
     (row) => row.student_id
   );
 
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, reason: "children-read-failed" }, { status: 500 });
   }
 
-  const children = ((studentRows as StudentRow[] | null) ?? []).map((row) => ({
+  const children = ((studentRows as unknown as StudentRow[] | null) ?? []).map((row) => ({
     id: row.id,
     fullName: row.full_name,
     dateOfBirth: row.date_of_birth ?? null,
@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, reason: "membership-check-failed" }, { status: 500 });
   }
 
-  const isApprovedParent = ((membershipRows as Array<{ school_role: string }> | null) ?? []).length > 0;
+  const isApprovedParent = ((membershipRows as unknown as Array<{ school_role: string }> | null) ?? []).length > 0;
   if (!isApprovedParent) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }
@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, reason: "student-create-failed" }, { status: 500 });
   }
 
-  const studentId = (newStudent as { id: string }).id;
+  const studentId = (newStudent as unknown as { id: string }).id;
 
   // Link the student to the parent via student_guardians
   const { error: guardianInsertError } = await adminSupabase

@@ -31,7 +31,7 @@ async function assertWriteAccess(
     .maybeSingle();
 
   const isSuperadmin =
-    (profile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+    (profile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   if (!isSuperadmin) {
     const { data: memberships } = await adminSupabase
@@ -42,7 +42,7 @@ async function assertWriteAccess(
       .eq("approval_status", "approved");
 
     const roles: string[] = (
-      (memberships as Array<{ school_role: string }> | null) ?? []
+      (memberships as unknown as Array<{ school_role: string }> | null) ?? []
     ).map((m) => m.school_role);
 
     if (!roles.some((r) => WRITE_ROLES.includes(r))) {

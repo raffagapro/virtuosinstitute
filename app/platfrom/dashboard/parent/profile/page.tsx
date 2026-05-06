@@ -3,5 +3,5 @@
 import { SharedProfilePage } from "@/app/platfrom/dashboard/profile-page";
 
 export default function ParentProfilePage() {
-  return <SharedProfilePage isParent={true} />;
+  return <SharedProfilePage expectedPath="/platfrom/dashboard/parent/profile" isParent={true} />;
 }

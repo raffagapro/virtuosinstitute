@@ -57,14 +57,14 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, reason: "role-read-failed" }, { status: 500 });
   }
 
-  const typedProfile = (profileRow as {
+  const typedProfile = (profileRow as unknown as {
     full_name: string | null;
     email: string | null;
     platform_role: string | null;
   } | null);
 
   const platformRole = typedProfile?.platform_role ?? null;
-  const schoolRoles = ((roleRows as MembershipRoleRow[] | null) ?? []).map((row) => row.school_role);
+  const schoolRoles = ((roleRows as unknown as MembershipRoleRow[] | null) ?? []).map((row) => row.school_role);
   const effectiveRole = resolveEffectiveDashboardRole({
     platformRole,
     schoolRoles,

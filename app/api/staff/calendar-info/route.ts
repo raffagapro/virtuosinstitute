@@ -45,7 +45,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .eq("is_active", true)
     .eq("approval_status", "approved");
 
-  const roles: string[] = ((memberships as Array<{ school_role: string }> | null) ?? []).map(
+  const roles: string[] = ((memberships as unknown as Array<{ school_role: string }> | null) ?? []).map(
     (m) => m.school_role
   );
 
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .in("calendar_type", calendarTypes)
     .eq("is_active", true);
 
-  const existing = (existingCalendars ?? []) as Array<{
+  const existing = (existingCalendars ?? []) as unknown as Array<{
     id: string;
     calendar_type: string;
     title: string;
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           calendar_type: t,
           title: CALENDAR_TITLES[t] ?? t,
           is_active: true,
-        })) as Array<Record<string, unknown>>
+        })) as unknown as Array<Record<string, unknown>>
       );
 
     const { data: allCalendars } = await adminSupabase
@@ -110,7 +110,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .in("calendar_type", calendarTypes)
       .eq("is_active", true);
 
-    calendars = (allCalendars ?? []) as Array<{
+    calendars = (allCalendars ?? []) as unknown as Array<{
       id: string;
       calendar_type: string;
       title: string;

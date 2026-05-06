@@ -48,7 +48,7 @@ export async function PATCH(
     .eq("approval_status", "approved");
 
   const roles: string[] = (
-    (memberships as Array<{ school_role: string }> | null) ?? []
+    (memberships as unknown as Array<{ school_role: string }> | null) ?? []
   ).map((m) => m.school_role);
 
   const canManage = roles.some((r) => APPOINTMENT_MANAGER_ROLES.includes(r));
@@ -82,7 +82,7 @@ export async function PATCH(
     return NextResponse.json({ ok: false, reason: "appointment-not-found" }, { status: 404 });
   }
 
-  const { calendar_id, status: currentStatus } = appt as {
+  const { calendar_id, status: currentStatus } = appt as unknown as {
     id: string;
     calendar_id: string;
     status: string;
@@ -105,7 +105,7 @@ export async function PATCH(
       .eq("id", calendar_id)
       .single();
 
-    const calType = (calRow as { calendar_type: string } | null)?.calendar_type;
+    const calType = (calRow as unknown as { calendar_type: string } | null)?.calendar_type;
     const actorOwnedCalType = roles.map((r) => ROLE_CALENDAR_MAP[r]).find(Boolean);
 
     if (!calType || !actorOwnedCalType || calType !== actorOwnedCalType) {

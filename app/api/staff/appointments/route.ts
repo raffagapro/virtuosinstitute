@@ -49,7 +49,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .eq("is_active", true)
     .eq("approval_status", "approved");
 
-  const roles: string[] = ((memberships as Array<{ school_role: string }> | null) ?? []).map(
+  const roles: string[] = ((memberships as unknown as Array<{ school_role: string }> | null) ?? []).map(
     (m) => m.school_role
   );
   if (!roles.some((r) => MANAGED_ROLES.includes(r))) {
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .in("calendar_type", effectiveCalTypes)
     .eq("is_active", true);
 
-  const calendarIds = ((calRows ?? []) as Array<{ id: string }>).map((c) => c.id);
+  const calendarIds = ((calRows ?? []) as unknown as Array<{ id: string }>).map((c) => c.id);
   if (!calendarIds.length) {
     return NextResponse.json({ ok: true, appointments: [] });
   }

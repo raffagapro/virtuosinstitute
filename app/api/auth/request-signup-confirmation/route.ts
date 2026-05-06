@@ -70,10 +70,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const locale = resolvePreferredLocale(payload.locale ?? (profileRow as { preferred_locale?: string | null } | null)?.preferred_locale);
+  const locale = resolvePreferredLocale(payload.locale ?? (profileRow as unknown as { preferred_locale?: string | null } | null)?.preferred_locale);
   const emailPayload = buildSignupConfirmationEmail({
     locale,
-    fullName: (profileRow as { full_name?: string | null } | null)?.full_name,
+    fullName: (profileRow as unknown as { full_name?: string | null } | null)?.full_name,
     confirmationUrl: resolvedLink,
   });
 

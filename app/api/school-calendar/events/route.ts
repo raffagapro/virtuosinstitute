@@ -26,7 +26,7 @@ async function ensureSchoolCalendar(
     .eq("is_active", true)
     .maybeSingle();
 
-  if (existing) return (existing as { id: string }).id;
+  if (existing) return (existing as unknown as { id: string }).id;
 
   const { data: inserted, error: calendarErr } = await adminSupabase
     .from("calendars")
@@ -37,7 +37,7 @@ async function ensureSchoolCalendar(
   if (!inserted) {
     throw new Error(`Failed to seed school calendar: ${calendarErr?.message ?? "unknown"}`);
   }
-  return (inserted as { id: string }).id;
+  return (inserted as unknown as { id: string }).id;
 }
 
 /**
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   const isSuperadmin =
-    (viewerProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+    (viewerProfile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   let roles: string[] = [];
 
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq("is_active", true)
       .eq("approval_status", "approved");
 
-    const membershipRows = (memberships as Array<{ school_role: string }> | null) ?? [];
+    const membershipRows = (memberships as unknown as Array<{ school_role: string }> | null) ?? [];
     roles = membershipRows.map((m) => m.school_role);
   }
 
@@ -185,7 +185,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .order("starts_at", { ascending: true });
 
   const schoolEvents = (
-    dbEvents as Array<{
+    dbEvents as unknown as Array<{
       id: string;
       title: string;
       description: string | null;
@@ -209,7 +209,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .not("date_of_birth", "is", null);
 
     const studentPeople = (
-      (students as Array<{ id: string; first_name: string; last_name: string; date_of_birth: string }> | null) ?? []
+      (students as unknown as Array<{ id: string; first_name: string; last_name: string; date_of_birth: string }> | null) ?? []
     ).map((s) => ({
       id: s.id,
       name: `${s.first_name} ${s.last_name}`,
@@ -227,7 +227,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .eq("approval_status", "approved");
 
     const staffRoleMap = new Map(
-      ((staffMemberships as Array<{ profile_id: string; school_role: string }> | null) ?? [])
+      ((staffMemberships as unknown as Array<{ profile_id: string; school_role: string }> | null) ?? [])
         .map((m) => [m.profile_id, m.school_role])
     );
 
@@ -242,7 +242,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         .not("date_of_birth", "is", null)
         .in("id", staffProfileIds);
 
-      (staffProfiles as Array<{ id: string; full_name: string; date_of_birth: string }> | null)?.forEach((p) => {
+      (staffProfiles as unknown as Array<{ id: string; full_name: string; date_of_birth: string }> | null)?.forEach((p) => {
         staffPeople.push({
           id: p.id,
           name: p.full_name,
@@ -297,7 +297,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   const isSuperadmin =
-    (creatorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+    (creatorProfile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   let roles: string[] = [];
 
@@ -311,7 +311,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .eq("is_active", true)
       .eq("approval_status", "approved");
 
-    const membershipRows = (memberships as Array<{ school_role: string }> | null) ?? [];
+    const membershipRows = (memberships as unknown as Array<{ school_role: string }> | null) ?? [];
     roles = membershipRows.map((m) => m.school_role);
   }
 
@@ -380,7 +380,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .eq("is_active", true)
       .eq("approval_status", "approved");
 
-    const parentProfileIds = ((parentMemberships as Array<{ profile_id: string }> | null) ?? []).map(
+    const parentProfileIds = ((parentMemberships as unknown as Array<{ profile_id: string }> | null) ?? []).map(
       (m) => m.profile_id
     );
 
@@ -391,10 +391,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .select("id, full_name, email")
         .in("id", parentProfileIds);
 
-      const parents = (parentProfiles as Array<{ id: string; full_name: string; email: string | null }> | null) ?? [];
+      const parents = (parentProfiles as unknown as Array<{ id: string; full_name: string; email: string | null }> | null) ?? [];
 
-      const eventTitle = (inserted as { title: string }).title;
-      const eventDescription = (inserted as { description: string | null }).description;
+      const eventTitle = (inserted as unknown as { title: string }).title;
+      const eventDescription = (inserted as unknown as { description: string | null }).description;
 
       if (notify_parents) {
         // Create immediate notification campaign.
@@ -415,7 +415,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           .select("id")
           .single();
 
-        const campaignId = (campaign as { id: string } | null)?.id;
+        const campaignId = (campaign as unknown as { id: string } | null)?.id;
 
         if (campaignId) {
           // Seed delivery rows (in_app unread immediately).
@@ -487,14 +487,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         const [yr, mo, dy] = datePart.split("-").map(Number);
         const scheduledFor = new Date(Date.UTC(yr, mo - 1, dy, 8, 0, 0));
 
-        const reminderTitle = `Recordatorio: ${(inserted as { title: string }).title}`;
+        const reminderTitle = `Recordatorio: ${(inserted as unknown as { title: string }).title}`;
 
         const { data: scheduledCampaign } = await adminSupabase
           .from("notification_campaigns")
           .insert({
             title: reminderTitle,
-            subject: `Hoy: ${(inserted as { title: string }).title}`,
-            body: eventDescription ?? (inserted as { title: string }).title,
+            subject: `Hoy: ${(inserted as unknown as { title: string }).title}`,
+            body: eventDescription ?? (inserted as unknown as { title: string }).title,
             target_audience: "parents",
             delivery_mode: "scheduled",
             status: "scheduled",
@@ -506,7 +506,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           .select("id")
           .single();
 
-        const scheduledCampaignId = (scheduledCampaign as { id: string } | null)?.id;
+        const scheduledCampaignId = (scheduledCampaign as unknown as { id: string } | null)?.id;
 
         if (scheduledCampaignId) {
           await adminSupabase

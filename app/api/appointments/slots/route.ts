@@ -45,7 +45,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .eq("profile_id", userData.user.id)
     .eq("is_active", true);
 
-  const roles: string[] = ((memberships as Array<{ school_role: string; approval_status: string }> | null) ?? [])
+  const roles: string[] = ((memberships as unknown as Array<{ school_role: string; approval_status: string }> | null) ?? [])
     .filter((m) => m.approval_status === "approved")
     .map((m) => m.school_role);
 
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (calErr || !calendarRows?.length) {
     return NextResponse.json({ ok: false, reason: "calendar-not-found" }, { status: 404 });
   }
-  const calendarId: string = (calendarRows[0] as { id: string }).id;
+  const calendarId: string = (calendarRows[0] as unknown as { id: string }).id;
 
   const fromISO = fromDate.toISOString();
   const toISO = toDate.toISOString();
@@ -118,9 +118,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ ok: false, reason: "rules-fetch-failed" }, { status: 500 });
   }
 
-  const rules = (rulesResult.data ?? []) as AvailabilityRule[];
-  const appointments = (appointmentsResult.data ?? []) as AppointmentBrief[];
-  const blocks = (blocksResult.data ?? []) as CalendarBlock[];
+  const rules = (rulesResult.data ?? []) as unknown as AvailabilityRule[];
+  const appointments = (appointmentsResult.data ?? []) as unknown as AppointmentBrief[];
+  const blocks = (blocksResult.data ?? []) as unknown as CalendarBlock[];
 
   const slots = computeSlots(rules, fromDate, toDate, appointments, blocks);
 

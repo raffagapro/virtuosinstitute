@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { AppButton } from "@/components/ui";
@@ -21,7 +21,7 @@ function sanitizeNextPath(nextPath: string | null, fallbackPath: string) {
   return nextPath;
 }
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const locale = defaultLocale;
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,5 +87,28 @@ export default function AuthCallbackPage() {
         </AppButton>
       </div>
     </main>
+  );
+}
+
+function AuthCallbackFallback() {
+  const locale = defaultLocale;
+
+  return (
+    <main className="min-h-screen bg-[#f5fbff] text-[#003F60] px-6 py-16">
+      <div className="max-w-2xl mx-auto space-y-4">
+        <h1 className="font-['Sora',Helvetica,Arial,sans-serif] text-3xl font-bold">
+          {translate(locale, "platform.authCallback.verifyingTitle")}
+        </h1>
+        <p className="text-[#2b5876]">{translate(locale, "platform.authCallback.verifyingBody")}</p>
+      </div>
+    </main>
+  );
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={<AuthCallbackFallback />}>
+      <AuthCallbackContent />
+    </Suspense>
   );
 }

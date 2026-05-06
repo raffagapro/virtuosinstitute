@@ -166,7 +166,7 @@ export function ParentAppointmentsPage({ labels }: ParentAppointmentsPageProps) 
       .eq("requester_profile_id", user.id)
       .order("starts_at", { ascending: false });
 
-    setMyAppointments((appts ?? []) as ParentAppointment[]);
+    setMyAppointments((appts ?? []) as unknown as ParentAppointment[]);
     setLoadingAppts(false);
   }, []);
 

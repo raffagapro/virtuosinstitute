@@ -111,7 +111,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }
 
-  const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+  const isSuperadmin = (actorProfile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   let isOwner = false;
   let isCoordination = false;
@@ -157,7 +157,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "target-profile-read-failed" }, { status: 500 });
   }
 
-  if ((targetProfile as { platform_role: string | null } | null)?.platform_role === "superadmin") {
+  if ((targetProfile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin") {
     return NextResponse.json({ ok: false, reason: "forbidden-target" }, { status: 403 });
   }
 
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
   }
 
   const targetRole = getEffectiveManagementRole({
-    platformRole: (targetProfile as { platform_role: string | null } | null)?.platform_role ?? null,
+    platformRole: (targetProfile as unknown as { platform_role: string | null } | null)?.platform_role ?? null,
     memberships: ((targetMembershipRows as unknown as Array<{ school_role: string; is_active: boolean; approval_status: string }> | null) ?? []),
   });
 
@@ -202,7 +202,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: "membership-read-failed" }, { status: 500 });
     }
 
-    const pendingMembership = ((pendingMembershipRows as MembershipUpdateRow[] | null) ?? [])[0] ?? null;
+    const pendingMembership = ((pendingMembershipRows as unknown as MembershipUpdateRow[] | null) ?? [])[0] ?? null;
 
     if (pendingMembership) {
       const { error: membershipUpdateError } = await adminSupabase
@@ -260,7 +260,7 @@ export async function POST(request: Request) {
   const nowIso = new Date().toISOString();
   const notes = payload.notes?.trim() || null;
 
-  const existingApprovalRows = (existingRows as ParentApprovalRow[] | null) ?? [];
+  const existingApprovalRows = (existingRows as unknown as ParentApprovalRow[] | null) ?? [];
 
   if (existingApprovalRows.length > 0) {
     const { error: approvalUpdateError } = await adminSupabase
@@ -293,7 +293,7 @@ export async function POST(request: Request) {
   }
 
   if (payload.status === "approved") {
-    const typedTargetProfile = (targetProfile as {
+    const typedTargetProfile = (targetProfile as unknown as {
       email: string | null;
       full_name: string | null;
       preferred_locale: string | null;

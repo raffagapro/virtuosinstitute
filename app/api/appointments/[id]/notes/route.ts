@@ -51,7 +51,7 @@ export async function POST(
     .eq("is_active", true)
     .eq("approval_status", "approved");
 
-  const roles: string[] = ((memberships as Array<{ school_role: string }> | null) ?? []).map(
+  const roles: string[] = ((memberships as unknown as Array<{ school_role: string }> | null) ?? []).map(
     (m) => m.school_role
   );
   if (!roles.some((r) => NOTE_MANAGER_ROLES.includes(r))) {
@@ -69,7 +69,7 @@ export async function POST(
     return NextResponse.json({ ok: false, reason: "appointment-not-found" }, { status: 404 });
   }
 
-  const { student_id: linkedStudent } = appt as { id: string; student_id: string | null; status: string };
+  const { student_id: linkedStudent } = appt as unknown as { id: string; student_id: string | null; status: string };
 
   let body: NotePayload;
   try {

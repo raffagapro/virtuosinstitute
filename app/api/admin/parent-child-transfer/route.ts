@@ -65,7 +65,7 @@ async function resolveActor(accessToken: string) {
     };
   }
 
-  const isSuperadmin = (actorProfile as { platform_role: string | null } | null)?.platform_role === "superadmin";
+  const isSuperadmin = (actorProfile as unknown as { platform_role: string | null } | null)?.platform_role === "superadmin";
 
   let isOwner = false;
   let isCoordination = false;
@@ -84,11 +84,11 @@ async function resolveActor(accessToken: string) {
       };
     }
 
-    isOwner = ((actorMembershipRows as Array<{ school_role: string }> | null) ?? []).some(
+    isOwner = ((actorMembershipRows as unknown as Array<{ school_role: string }> | null) ?? []).some(
       (membership) => membership.school_role === "school_owner"
     );
 
-    isCoordination = ((actorMembershipRows as Array<{ school_role: string }> | null) ?? []).some(
+    isCoordination = ((actorMembershipRows as unknown as Array<{ school_role: string }> | null) ?? []).some(
       (membership) => membership.school_role === "coordination"
     );
   }
@@ -129,7 +129,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, reason: "students-read-failed" }, { status: 500 });
   }
 
-  const linkedStudents = ((linkedGuardianRows as Array<{
+  const linkedStudents = ((linkedGuardianRows as unknown as Array<{
     student_id: string;
     link_status: string;
     students: { id: string; full_name: string; grade_level: string | null; approval_status: string } | null;
@@ -156,7 +156,7 @@ export async function GET(request: Request) {
 
   const candidateParentIds = Array.from(
     new Set(
-      ((parentMemberships as Array<{ profile_id: string }> | null) ?? [])
+      ((parentMemberships as unknown as Array<{ profile_id: string }> | null) ?? [])
         .map((row) => row.profile_id)
         .filter((profileId) => profileId !== sourceParentProfileId)
     )
@@ -174,7 +174,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, reason: "parents-read-failed" }, { status: 500 });
     }
 
-    candidateParents = ((parentProfiles as Array<{
+    candidateParents = ((parentProfiles as unknown as Array<{
       id: string;
       full_name: string | null;
       email: string | null;
@@ -236,7 +236,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: "source-links-read-failed" }, { status: 500 });
     }
 
-    const sourceLinkedStudentIds = new Set(((sourceLinks as Array<{ student_id: string }> | null) ?? []).map((row) => row.student_id));
+    const sourceLinkedStudentIds = new Set(((sourceLinks as unknown as Array<{ student_id: string }> | null) ?? []).map((row) => row.student_id));
     const missingSourceLinks = uniqueStudentIds.filter((studentId) => !sourceLinkedStudentIds.has(studentId));
     if (missingSourceLinks.length > 0) {
       return NextResponse.json({ ok: false, reason: "student-not-linked-to-source-parent" }, { status: 400 });
@@ -261,9 +261,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: "request-create-failed" }, { status: 500 });
     }
 
+      const createdRequest = requestRow as unknown as { id: string };
+
     return NextResponse.json({
       ok: true,
-      transferRequestId: requestRow.id,
+        transferRequestId: createdRequest.id,
       status: "pending_confirmation",
     });
   }
@@ -283,11 +285,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: "request-not-found" }, { status: 404 });
     }
 
-    if (transferRequest.status !== "pending_confirmation") {
+    const typedTransferRequest = transferRequest as unknown as {
+      id: string;
+      source_parent_profile_id: string;
+      target_parent_profile_id: string;
+      student_ids: string[] | null;
+      status: string;
+    };
+
+    if (typedTransferRequest.status !== "pending_confirmation") {
       return NextResponse.json({ ok: false, reason: "request-not-pending" }, { status: 400 });
     }
 
-    const studentIds = (transferRequest.student_ids as string[] | null) ?? [];
+    const studentIds = (typedTransferRequest.student_ids as unknown as string[] | null) ?? [];
     if (studentIds.length === 0) {
       return NextResponse.json({ ok: false, reason: "request-empty" }, { status: 400 });
     }
@@ -295,7 +305,7 @@ export async function POST(request: Request) {
     const { data: sourceGuardianLinks, error: sourceGuardianLinksError } = await adminSupabase
       .from("student_guardians")
       .select("id, student_id, parent_profile_id, relationship_type, is_primary_contact, is_legal_guardian, link_status")
-      .eq("parent_profile_id", transferRequest.source_parent_profile_id)
+      .eq("parent_profile_id", typedTransferRequest.source_parent_profile_id)
       .in("student_id", studentIds)
       .in("link_status", ["approved", "pending"]);
 
@@ -303,7 +313,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, reason: "source-links-read-failed" }, { status: 500 });
     }
 
-    const sourceLinks = (sourceGuardianLinks as GuardianLinkRow[] | null) ?? [];
+    const sourceLinks = (sourceGuardianLinks as unknown as GuardianLinkRow[] | null) ?? [];
     if (sourceLinks.length === 0) {
       return NextResponse.json({ ok: false, reason: "source-links-missing" }, { status: 400 });
     }
@@ -329,14 +339,16 @@ export async function POST(request: Request) {
         .from("student_guardians")
         .select("id")
         .eq("student_id", link.student_id)
-        .eq("parent_profile_id", transferRequest.target_parent_profile_id)
+        .eq("parent_profile_id", typedTransferRequest.target_parent_profile_id)
         .maybeSingle();
 
       if (targetReadError) {
         return NextResponse.json({ ok: false, reason: "target-links-read-failed" }, { status: 500 });
       }
 
-      if (existingTargetLink?.id) {
+      const typedExistingTargetLink = existingTargetLink as unknown as { id: string } | null;
+
+      if (typedExistingTargetLink?.id) {
         const { error: targetUpdateError } = await adminSupabase
           .from("student_guardians")
           .update({
@@ -347,7 +359,7 @@ export async function POST(request: Request) {
             approved_by_profile_id: actorId,
             approved_at: nowIso,
           })
-          .eq("id", existingTargetLink.id);
+          .eq("id", typedExistingTargetLink.id);
 
         if (targetUpdateError) {
           return NextResponse.json({ ok: false, reason: "target-links-update-failed" }, { status: 500 });
@@ -357,7 +369,7 @@ export async function POST(request: Request) {
           .from("student_guardians")
           .insert({
             student_id: link.student_id,
-            parent_profile_id: transferRequest.target_parent_profile_id,
+            parent_profile_id: typedTransferRequest.target_parent_profile_id,
             relationship_type: link.relationship_type || "guardian_transfer",
             is_primary_contact: link.is_primary_contact,
             is_legal_guardian: link.is_legal_guardian,
@@ -379,7 +391,7 @@ export async function POST(request: Request) {
         confirmed_by_profile_id: actorId,
         confirmed_at: nowIso,
       })
-      .eq("id", transferRequest.id);
+      .eq("id", typedTransferRequest.id);
 
     if (closeRequestError) {
       return NextResponse.json({ ok: false, reason: "request-close-failed" }, { status: 500 });

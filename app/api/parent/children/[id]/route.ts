@@ -53,7 +53,7 @@ export async function PATCH(
     return NextResponse.json({ ok: false, reason: "membership-check-failed" }, { status: 500 });
   }
 
-  const isApprovedParent = ((membershipRows as Array<{ school_role: string }> | null) ?? []).length > 0;
+  const isApprovedParent = ((membershipRows as unknown as Array<{ school_role: string }> | null) ?? []).length > 0;
   if (!isApprovedParent) {
     return NextResponse.json({ ok: false, reason: "forbidden" }, { status: 403 });
   }

@@ -47,7 +47,7 @@ export async function GET(
     return NextResponse.json({ ok: false, reason: "not-found" }, { status: 404 });
   }
 
-  const apptRow = appt as {
+  const apptRow = appt as unknown as {
     id: string;
     requester_profile_id: string | null;
     starts_at: string;
@@ -67,7 +67,7 @@ export async function GET(
       .eq("is_active", true)
       .eq("approval_status", "approved");
 
-    const roles = ((memberships as Array<{ school_role: string }> | null) ?? []).map(
+    const roles = ((memberships as unknown as Array<{ school_role: string }> | null) ?? []).map(
       (m) => m.school_role
     );
     const isStaff = roles.some((r) =>

@@ -211,7 +211,7 @@ export async function POST(request: Request) {
           school_role: payload.assignedRole,
           approval_status: "approved",
           is_active: true,
-        })
+        } as never)
         .eq("id", pendingMembership.id);
 
       if (membershipUpdateError) {
@@ -237,7 +237,7 @@ export async function POST(request: Request) {
   } else {
     const { error: membershipUpdateError } = await adminSupabase
       .from("school_memberships")
-      .update({ approval_status: payload.status, is_active: false })
+      .update({ approval_status: payload.status, is_active: false } as never)
       .eq("profile_id", payload.profileId)
       .in("school_role", ["guest", "parent"]);
 
@@ -270,7 +270,7 @@ export async function POST(request: Request) {
         reviewed_at: nowIso,
         reviewed_by_profile_id: actorData.user.id,
         notes,
-      })
+      } as never)
       .eq("id", existingApprovalRows[0].id);
 
     if (approvalUpdateError) {

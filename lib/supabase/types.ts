@@ -9,10 +9,15 @@ export type Json =
 // Temporary baseline until generated DB types are introduced.
 export interface Database {
   public: {
-    Tables: Record<string, never>;
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
-    CompositeTypes: Record<string, never>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Tables: Record<string, any>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Views: Record<string, any>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Functions: Record<string, any>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    Enums: Record<string, any>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    CompositeTypes: Record<string, any>;
   };
 }
